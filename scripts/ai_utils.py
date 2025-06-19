@@ -1,6 +1,7 @@
 import time
 import json
 import tempfile
+import os
 from pathlib import Path
 from typing import Dict, Optional
 from google import genai
@@ -8,7 +9,7 @@ from google.genai.types import CreateBatchJobConfig, JobState, HttpOptions
 from google.cloud import storage
 
 
-def _create_batch_request(prompt_id: str, prompt_text: str, temperature: float) -> Dict:
+def _create_batch_request(prompt_id: str, prompt_text: str, temperature: float) -> str:
     """Create a single batch request object for the Gemini API
 
     Args:
@@ -17,7 +18,7 @@ def _create_batch_request(prompt_id: str, prompt_text: str, temperature: float) 
         temperature: Temperature setting for generation
 
     Returns:
-        Dictionary containing the formatted request for the batch API
+        JSON string containing the formatted request for the batch API
     """
     return json.dumps(
         {
@@ -96,62 +97,148 @@ def _upload_to_gcs(
     return f"gs://{bucket_name}/{blob_name}"
 
 
+def _download_from_gcs(
+    gcs_uri: str,
+    local_file_path: str,
+    project_id: Optional[str] = None,
+) -> None:
+    """Download a file from Google Cloud Storage
+
+    Args:
+        gcs_uri: GCS URI of the file to download (gs://bucket/blob)
+        local_file_path: Local path where to save the downloaded file
+        project_id: GCP project ID. If None, uses default from environment
+    """
+    # Parse the GCS URI
+    if not gcs_uri.startswith("gs://"):
+        raise ValueError(f"Invalid GCS URI: {gcs_uri}")
+
+    uri_parts = gcs_uri[5:].split("/", 1)  # Remove 'gs://' and split
+    if len(uri_parts) != 2:
+        raise ValueError(f"Invalid GCS URI format: {gcs_uri}")
+
+    bucket_name, blob_name = uri_parts
+
+    # Initialize the GCS client
+    if project_id:
+        client = storage.Client(project=project_id)
+    else:
+        client = storage.Client()
+
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+
+    # Download the file
+    blob.download_to_filename(local_file_path)
+
+
+def _list_gcs_blobs(
+    bucket_name: str,
+    prefix: str,
+    project_id: Optional[str] = None,
+) -> list[str]:
+    """List blobs in a GCS bucket with a given prefix
+
+    Args:
+        bucket_name: Name of the GCS bucket
+        prefix: Prefix to filter blobs
+        project_id: GCP project ID. If None, uses default from environment
+
+    Returns:
+        List of blob names matching the prefix
+    """
+    # Initialize the GCS client
+    if project_id:
+        client = storage.Client(project=project_id)
+    else:
+        client = storage.Client()
+
+    bucket = client.bucket(bucket_name)
+    blobs = bucket.list_blobs(prefix=prefix)
+
+    return [blob.name for blob in blobs]
+
+
 def gemini_batch(
     prompts: Dict[str, str],
     model: str = "gemini-2.5-flash",
     temperature: float = 0.2,
     gcs_bucket: Optional[str] = None,
     project_id: Optional[str] = None,
+    location: str = "us-central1",
 ) -> dict[str, str]:
-    """Runs a batch of prompt through the Gemini API
+    """Runs a batch of prompts through the Gemini API
 
     Args:
         prompts: A dictionary {prompt_id: prompt} of prompts to run through the Gemini API
         model: The model to use for the Gemini API
         temperature: The temperature to use for the Gemini API
-        gcs_bucket: Optional GCS bucket name to upload the input file to
-        project_id: Optional GCP project ID for GCS operations
+        gcs_bucket: GCS bucket name to upload files to (required for Vertex AI batch API)
+        project_id: GCP project ID for GCS operations
+        location: Google Cloud region for Vertex AI (default: us-central1)
 
     Returns:
         A dictionary {prompt_id: response} of responses from the Gemini API
     """
-    # Initialize the Gemini client for Vertex AI
-    client = genai.Client(http_options=HttpOptions(api_version="v1"), vertexai=True)
+    if not gcs_bucket:
+        raise ValueError("gcs_bucket is required for Vertex AI batch processing")
+
+    if not project_id:
+        raise ValueError("project_id is required for Vertex AI batch processing")
+
+    # Set the Google Cloud project environment variable
+    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+
+    # Initialize the Gemini client for Vertex AI with project and location
+    client = genai.Client(
+        http_options=HttpOptions(api_version="v1"),
+        vertexai=True,
+        project=project_id,
+        location=location,
+    )
+
+    # Create unique timestamp for this batch
+    timestamp = int(time.time())
 
     # Create a temporary directory for batch files
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         input_file = temp_path / "batch_input.jsonl"
-        output_dir = temp_path / "output"
 
         # Prepare the batch input file in JSONL format
         requests = "\n".join(
             [
-                json.dumps(_create_batch_request(prompt_id, prompt_text, temperature))
+                _create_batch_request(prompt_id, prompt_text, temperature)
                 for prompt_id, prompt_text in prompts.items()
             ]
         )
         input_file.write_text(requests)
 
-        # Determine the source file path/URI
-        if gcs_bucket:
-            # Upload to GCS and use the GCS URI
-            src_uri = _upload_to_gcs(
-                str(input_file),
-                gcs_bucket,
-                f"batch_input_{int(time.time())}.jsonl",
-                project_id,
-            )
-        else:
-            # Use local file path
-            src_uri = str(input_file)
+        # Upload input file to GCS
+        input_blob_name = f"batch_input_{timestamp}.jsonl"
+        src_uri = _upload_to_gcs(
+            str(input_file),
+            gcs_bucket,
+            input_blob_name,
+            project_id,
+        )
+
+        # Set up GCS output destination
+        output_prefix = f"batch_output_{timestamp}"
+        dest_uri = f"gs://{gcs_bucket}/{output_prefix}/"
+
+        print(f"Input uploaded to: {src_uri}")
+        print(f"Output will be written to: {dest_uri}")
 
         # Create batch job
         job = client.batches.create(
             model=model,
             src=src_uri,
-            config=CreateBatchJobConfig(dest=str(output_dir)),
+            config=CreateBatchJobConfig(dest=dest_uri),
         )
+
+        print(f"Batch job created: {job.name}")
+        print(f"Initial state: {job.state}")
 
         # Wait for job completion
         completed_states = {
@@ -162,38 +249,47 @@ def gemini_batch(
         }
 
         while job.state not in completed_states:
+            print(f"Job state: {job.state}, waiting...")
             time.sleep(10)  # Check every 10 seconds
             job = client.batches.get(name=job.name)
-            print(job)
+
+        print(f"Final job state: {job.state}")
 
         if job.state != JobState.JOB_STATE_SUCCEEDED:
             raise RuntimeError(f"Batch job failed with state: {job.state}")
 
+        # List and download output files from GCS
+        output_blobs = _list_gcs_blobs(gcs_bucket, output_prefix, project_id)
+
+        if not output_blobs:
+            raise RuntimeError(f"No output files found with prefix: {output_prefix}")
+
+        print(f"Found {len(output_blobs)} output files")
+
         # Process batch results
         results = {}
 
-        # Find the output file(s) in the output directory
-        output_files = list(output_dir.glob("*.jsonl"))
-        if not output_files:
-            # If no local files, try to get results from the job object
-            # This might require different handling depending on the actual API response
-            return {
-                prompt_id: f"No output found for batch job {job.name}"
-                for prompt_id in prompts.keys()
-            }
+        for blob_name in output_blobs:
+            if blob_name.endswith(".jsonl"):
+                # Download the output file
+                output_file = temp_path / f"output_{blob_name.split('/')[-1]}"
+                gcs_output_uri = f"gs://{gcs_bucket}/{blob_name}"
 
-        # Read and process the output file(s)
-        for output_file in output_files:
-            with open(output_file, "r") as f:
-                for line in f:
-                    if line.strip():
-                        custom_id, response_text = _parse_result_line(line)
-                        if custom_id and custom_id in prompts:
-                            results[custom_id] = response_text
+                print(f"Downloading: {gcs_output_uri}")
+                _download_from_gcs(gcs_output_uri, str(output_file), project_id)
+
+                # Process the downloaded file
+                with open(output_file, "r") as f:
+                    for line in f:
+                        if line.strip():
+                            custom_id, response_text = _parse_result_line(line)
+                            if custom_id and custom_id in prompts:
+                                results[custom_id] = response_text
 
         # Ensure all prompts have a result (even if empty)
         for prompt_id in prompts.keys():
             if prompt_id not in results:
                 results[prompt_id] = ""
 
-        return results
+        print(f"Successfully processed {len(results)} results")
+        return results, job

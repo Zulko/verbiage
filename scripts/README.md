@@ -111,3 +111,13 @@ The project is configured with:
 
 - `pyproject.toml`: Contains project metadata, dependencies, and tool configurations
 - `instructions/`: Contains game-specific instructions and configurations in JSON and Markdown formats
+
+## Batch Processing
+
+For authentication:
+
+```
+brew install --cask google-cloud-sdk
+gcloud auth application-default login
+gcloud auth application-default set-quota-project gen-lang-client-0608167298
+```

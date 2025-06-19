@@ -4,6 +4,7 @@ from random import choice
 from pydantic import BaseModel
 from utils import run_gemini, format_template
 
+MODEL = "gemini-2.0-flash"
 prompts_path = Path(__file__).parent / "instructions" / "en"
 
 print("Picking a word...")
@@ -22,7 +23,9 @@ class Character(BaseModel):
 
 
 character_prompt = format_template(prompts_path / "character.md", word=word)
-character = run_gemini(character_prompt, response_model=Character, temperature=0.9)
+character = run_gemini(
+    character_prompt, response_model=Character, temperature=0.9, model=MODEL
+)
 
 print("Generating advice on things to avoid...")
 
@@ -34,7 +37,7 @@ class ThingsToAvoid(BaseModel):
 
 things_to_avoid_prompt = format_template(prompts_path / "things_to_avoid.md", word=word)
 things_to_avoid = run_gemini(
-    things_to_avoid_prompt, response_model=ThingsToAvoid, temperature=0.4
+    things_to_avoid_prompt, response_model=ThingsToAvoid, temperature=0.4, model=MODEL
 )
 
 word_response_prompt = format_template(
@@ -59,6 +62,7 @@ def play():
         response = run_gemini(
             word_response_prompt.replace("{{player_word}}", player_word),
             temperature=0.2,
+            model=MODEL,
         )
         print(response)
         if player_word == word:
@@ -75,4 +79,4 @@ def generate_all_answers():
 
 
 if __name__ == "__main__":
-    
+    play()
