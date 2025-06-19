@@ -2,9 +2,62 @@ import time
 import json
 import tempfile
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 from google import genai
 from google.genai.types import CreateBatchJobConfig, JobState, HttpOptions
+
+
+def _create_batch_request(prompt_id: str, prompt_text: str, temperature: float) -> Dict:
+    """Create a single batch request object for the Gemini API
+
+    Args:
+        prompt_id: Unique identifier for this prompt
+        prompt_text: The actual prompt text
+        temperature: Temperature setting for generation
+
+    Returns:
+        Dictionary containing the formatted request for the batch API
+    """
+    return json.dumps(
+        {
+            "custom_id": prompt_id,
+            "request": {
+                "contents": [{"role": "user", "parts": [{"text": prompt_text}]}],
+                "generationConfig": {
+                    "temperature": temperature,
+                    "responseMimeType": "text/plain",
+                },
+            },
+        }
+    )
+
+
+def _parse_result_line(line: str) -> tuple[str | None, str]:
+    """Parse a single result line from batch output
+
+    Args:
+        line: JSON line string from batch output
+
+    Returns:
+        Tuple of (prompt_id, response_text). prompt_id is None if parsing fails.
+    """
+    try:
+        result = json.loads(line)
+        custom_id = result.get("custom_id")
+
+        # Extract the response text from the result
+        response_text = ""
+        if "response" in result:
+            candidates = result["response"].get("candidates", [])
+            if candidates and len(candidates) > 0:
+                content = candidates[0].get("content", {})
+                parts = content.get("parts", [])
+                if parts and len(parts) > 0:
+                    response_text = parts[0].get("text", "")
+
+        return custom_id, response_text
+    except json.JSONDecodeError:
+        return None, ""
 
 
 def gemini_batch(
@@ -30,22 +83,13 @@ def gemini_batch(
         output_dir = temp_path / "output"
 
         # Prepare the batch input file in JSONL format
-        with open(input_file, "w") as f:
-            for prompt_id, prompt_text in prompts.items():
-                request = {
-                    "request": {
-                        "contents": [
-                            {"role": "user", "parts": [{"text": prompt_text}]}
-                        ],
-                        "generationConfig": {
-                            "temperature": temperature,
-                            "responseMimeType": "text/plain",
-                        },
-                    }
-                }
-                # Add prompt_id as metadata to track responses
-                request["custom_id"] = prompt_id
-                f.write(json.dumps(request) + "\n")
+        requests = "\n".join(
+            [
+                json.dumps(_create_batch_request(prompt_id, prompt_text, temperature))
+                for prompt_id, prompt_text in prompts.items()
+            ]
+        )
+        input_file.write_text(requests)
 
         # Create batch job
         job = client.batches.create(
@@ -63,8 +107,9 @@ def gemini_batch(
         }
 
         while job.state not in completed_states:
-            time.sleep(30)  # Check every 30 seconds
+            time.sleep(10)  # Check every 10 seconds
             job = client.batches.get(name=job.name)
+            print(job)
 
         if job.state != JobState.JOB_STATE_SUCCEEDED:
             raise RuntimeError(f"Batch job failed with state: {job.state}")
@@ -87,25 +132,9 @@ def gemini_batch(
             with open(output_file, "r") as f:
                 for line in f:
                     if line.strip():
-                        try:
-                            result = json.loads(line)
-                            custom_id = result.get("custom_id")
-                            if custom_id and custom_id in prompts:
-                                # Extract the response text from the result
-                                response_text = ""
-                                if "response" in result:
-                                    candidates = result["response"].get(
-                                        "candidates", []
-                                    )
-                                    if candidates and len(candidates) > 0:
-                                        content = candidates[0].get("content", {})
-                                        parts = content.get("parts", [])
-                                        if parts and len(parts) > 0:
-                                            response_text = parts[0].get("text", "")
-
-                                results[custom_id] = response_text
-                        except json.JSONDecodeError:
-                            continue
+                        custom_id, response_text = _parse_result_line(line)
+                        if custom_id and custom_id in prompts:
+                            results[custom_id] = response_text
 
         # Ensure all prompts have a result (even if empty)
         for prompt_id in prompts.keys():
