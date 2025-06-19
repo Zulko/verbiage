@@ -53,23 +53,25 @@ word_response_prompt = format_template(
 
 
 def play():
-    print("Let's play!")
-    print(f"Today's host is {character.name}. {character.description}.")
+    print("🎮 Let's play!")
+    print(f"🎭 Today's host is {character.name}. {character.description}")
     while True:
-        player_word = input("Guess the secret word: ")
+        player_word = input("💭 Your guess >>> ")
         if player_word == "quit":
-            print("The solution was: ", word)
+            print("🏁 The solution was:", word)
             break
-        if player_word == "":
+        if len(player_word) != 5:
+            print("⚠️  Enter a 5-letter word")
             continue
+        print("🔍 Checking...")
         response = run_gemini(
             word_response_prompt.replace("{{player_word}}", player_word),
             temperature=0.2,
             model=MODEL,
         )
-        print(response)
+        print(f"\n🗣️ {response}\n")
         if player_word == word:
-            print("You win!")
+            print("🎉 You win! 🏆")
             break
 
 

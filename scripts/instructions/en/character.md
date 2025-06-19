@@ -1,6 +1,6 @@
 Invent an imaginary, relatable character without any obvious connection to the word "{{word}}".
 
-Decide the following attributes, in this order. Try to make the occupation related to the following: {{random_topics}}.
+Decide the following attributes, in this order. Try to keep these related to the following: {{random_topics}}.
 
 - *description* : a sentence describing occupation, appearance, striking traits, like someone who walks in the room would notice (don't mention secret activities). It should be familiar but be creative and original in how you mix different tropes!
 - *interests* : a sentence listing interests like food, history, etc. Don't try to be funny, just give generic topics like love, business, sports,etc.
