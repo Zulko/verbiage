@@ -2,9 +2,10 @@ import time
 import json
 import tempfile
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 from google import genai
 from google.genai.types import CreateBatchJobConfig, JobState, HttpOptions
+from google.cloud import storage
 
 
 def _create_batch_request(prompt_id: str, prompt_text: str, temperature: float) -> Dict:
@@ -60,8 +61,47 @@ def _parse_result_line(line: str) -> tuple[str | None, str]:
         return None, ""
 
 
+def _upload_to_gcs(
+    local_file_path: str,
+    bucket_name: str,
+    blob_name: Optional[str] = None,
+    project_id: Optional[str] = None,
+) -> str:
+    """Upload a file to Google Cloud Storage
+
+    Args:
+        local_file_path: Path to the local file to upload
+        bucket_name: Name of the GCS bucket
+        blob_name: Name for the blob in GCS. If None, uses the filename
+        project_id: GCP project ID. If None, uses default from environment
+
+    Returns:
+        GCS URI of the uploaded file (gs://bucket/blob)
+    """
+    if blob_name is None:
+        blob_name = Path(local_file_path).name
+
+    # Initialize the GCS client
+    if project_id:
+        client = storage.Client(project=project_id)
+    else:
+        client = storage.Client()
+
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+
+    # Upload the file
+    blob.upload_from_filename(local_file_path)
+
+    return f"gs://{bucket_name}/{blob_name}"
+
+
 def gemini_batch(
-    prompts: Dict[str, str], model: str = "gemini-2.5-flash", temperature: float = 0.2
+    prompts: Dict[str, str],
+    model: str = "gemini-2.5-flash",
+    temperature: float = 0.2,
+    gcs_bucket: Optional[str] = None,
+    project_id: Optional[str] = None,
 ) -> dict[str, str]:
     """Runs a batch of prompt through the Gemini API
 
@@ -69,6 +109,8 @@ def gemini_batch(
         prompts: A dictionary {prompt_id: prompt} of prompts to run through the Gemini API
         model: The model to use for the Gemini API
         temperature: The temperature to use for the Gemini API
+        gcs_bucket: Optional GCS bucket name to upload the input file to
+        project_id: Optional GCP project ID for GCS operations
 
     Returns:
         A dictionary {prompt_id: response} of responses from the Gemini API
@@ -91,10 +133,23 @@ def gemini_batch(
         )
         input_file.write_text(requests)
 
+        # Determine the source file path/URI
+        if gcs_bucket:
+            # Upload to GCS and use the GCS URI
+            src_uri = _upload_to_gcs(
+                str(input_file),
+                gcs_bucket,
+                f"batch_input_{int(time.time())}.jsonl",
+                project_id,
+            )
+        else:
+            # Use local file path
+            src_uri = str(input_file)
+
         # Create batch job
         job = client.batches.create(
             model=model,
-            src=str(input_file),
+            src=src_uri,
             config=CreateBatchJobConfig(dest=str(output_dir)),
         )
 
