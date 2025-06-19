@@ -1,8 +1,9 @@
 Invent an imaginary, relatable character without any obvious connection to the word "{{word}}".
 
-Return the response in JSON with the following attributes:
-- *description* : a sentence describing occupation, appearance, striking traits. It should be familiar but be creative and original in how you mix different tropes!
-- *interests* : a sentence listing interests like food, history, etc. Don't try to be funny, just give generic topics like love, business, etc.
+Decide the following attributes, in this order. Try to make the occupation related to the following: {{random_topics}}.
+
+- *description* : a sentence describing occupation, appearance, striking traits, like someone who walks in the room would notice (don't mention secret activities). It should be familiar but be creative and original in how you mix different tropes!
+- *interests* : a sentence listing interests like food, history, etc. Don't try to be funny, just give generic topics like love, business, sports,etc.
 - *tone* : a sentence describing way of speaking, general tone, and possibly speech patterns.
 - *name* : the character's name, invented based on the attributes above.
 
