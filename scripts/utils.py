@@ -1,6 +1,5 @@
-import os
+from pathlib import Path
 import requests
-import re
 from typing import Optional
 from pydantic import BaseModel
 from google import genai
@@ -8,7 +7,7 @@ from google import genai
 
 def download(url, filename, replace=False):
     """Download the file (check if it already exists)"""
-    if os.path.exists(filename) and not replace:
+    if Path(filename).exists() and not replace:
         print(f"File {filename} already exists")
         return
     response = requests.get(url)
@@ -40,7 +39,7 @@ def run_gemini(
         return text
 
 
-def format_template(template_path, **kwargs):
+def format_template(template_path: Path, **kwargs):
     """Format a template with the given kwargs"""
     template = template_path.read_text()
     for key, value in kwargs.items():
