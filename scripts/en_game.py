@@ -11,24 +11,6 @@ print("Picking a word...")
 words_path = prompts_path / "en_fivers.json"
 words = json.loads(words_path.read_text())
 word = choice(words["drawable"])
-random_topics = ", ".join([choice(words["common_nouns"]) for _ in range(5)])
-
-print("Generating character...")
-
-
-class Character(BaseModel):
-    name: str
-    description: str
-    interests: str
-    tone: str
-
-
-character_prompt = format_template(
-    prompts_path / "character.md", word=word, random_topics=random_topics
-)
-character = run_gemini(
-    character_prompt, response_model=Character, temperature=0.9, model=MODEL
-)
 
 print("Generating advice on things to avoid...")
 

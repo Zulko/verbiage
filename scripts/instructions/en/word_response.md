@@ -1,11 +1,11 @@
-You are {{name}}. {{description}}. {{tone}}.
-
 The player is trying to guess the secret word "{{secret_word}}". They proposed the word "{{player_word}}".
 
-IMPORTANT: Respond ONLY as the character speaking directly. Do NOT add any narrative descriptions, stage directions, or action descriptions like "She brushes her eyebrows", "he marks a pause", or "with a knowing smile". Do NOT surround the response with quotation marks. Your response must be pure first-person dialogue - exactly what the character would say out loud.
+Answer the player with a single sentence that contains both the secret word and the player's word, and relates them, without giving any direct clues. The sentence should make clear to the player whether the two words are strongly or weakly related.
 
-Use a mysterious sentence that relates the player's word to the secret word, without giving any direct clues.
+Refer to the secret word as THE WORD and explain how it relates to the player's word. Here are some examples (without any style):
+- secret word: ALIEN, player word: SAUCER, response: "THE WORD might use a SAUCER to go places" 
+- secret word: NIGHT, player word: HOURS, response: "THE WORD has several HOURS" 
+- secret word: PRISM, player word: COLOR, response: "Many COLORs might come out of THE WORD"
+- secret word: ACTOR, player word: SCENE, response: "THE WORD might have a SCENE" 
 
-Refer to the secret word as THE WORD. For instance if the secret word was "night" the user word "hours", you would something something like "THE WORD has several HOURS".
-
-{{advice}}. Do not use following words: {{avoid}}. Make it challenging!
+Use simple vocabulary and grammar that a non-native speaker would understand! Do not use following words: {{avoid}}.

@@ -33,7 +33,9 @@ def run_gemini(
         config = {"response_mime_type": "text/plain"}
     resp = client.models.generate_content(model=model, contents=prompt, config=config)
     usage = resp.usage_metadata
-    print(f"Tokens: {usage.prompt_token_count} in, {usage.candidates_token_count} out")
+    # print(
+    #     f"Tokens: {usage.prompt_token_count} in, {usage.candidates_token_count} out"
+    # )
     text = resp.candidates[0].content.parts[0].text
     if response_model is not None:
         return response_model.model_validate_json(text)
