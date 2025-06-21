@@ -33,3 +33,4 @@ wheels/
 data/*
 !data/.gitkeep
 
+.env

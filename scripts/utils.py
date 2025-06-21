@@ -3,6 +3,8 @@ import requests
 from typing import Optional
 from pydantic import BaseModel
 from google import genai
+from openai import OpenAI
+import json
 
 
 def download(url, filename, replace=False):
@@ -39,6 +41,52 @@ def run_gemini(
             f"Tokens: {usage.prompt_token_count} in, {usage.candidates_token_count} out"
         )
     text = resp.candidates[0].content.parts[0].text
+    if response_model is not None:
+        return response_model.model_validate_json(text)
+    else:
+        return text
+
+
+def run_openai(
+    prompt,
+    model="gpt-4o-mini",
+    response_model: Optional[BaseModel] = None,
+    temperature: float = 0.0,
+    debug: bool = False,
+) -> BaseModel | str:
+    """Get a response from the OpenAI API"""
+    client = OpenAI()
+
+    messages = [{"role": "user", "content": prompt}]
+
+    if response_model is not None:
+        # Use structured output with response_format
+        completion = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": response_model.__name__,
+                    "schema": response_model.model_json_schema(),
+                },
+            },
+        )
+    else:
+        # Standard text completion
+        completion = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+        )
+
+    if debug:
+        usage = completion.usage
+        print(f"Tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out")
+
+    text = completion.choices[0].message.content
+
     if response_model is not None:
         return response_model.model_validate_json(text)
     else:
