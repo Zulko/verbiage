@@ -27,29 +27,30 @@ things_to_avoid = run_gemini(
 
 word_response_prompt = format_template(
     prompts_path / "word_response.md",
-    **character.model_dump(),
     secret_word=word,
     avoid=", ".join(things_to_avoid.avoid),
     advice=things_to_avoid.advice,
 )
 
 
-def play():
+def play(debug=False):
     print("🎮 Let's play!")
-    print(f"🎭 Today's host is {character.name}. {character.description}")
+    if debug:
+        print(f"🔍 The secret word is {word}")
     while True:
         player_word = input("💭 Your guess >>> ")
         if player_word == "quit":
             print("🏁 The solution was:", word)
             break
-        if len(player_word) != 5:
-            print("⚠️  Enter a 5-letter word")
+        if player_word.upper() not in words["playable"]:
+            print(f"⚠️  {player_word.upper()} is not in my list")
             continue
         print("🔍 Checking...")
         response = run_gemini(
             word_response_prompt.replace("{{player_word}}", player_word),
             temperature=0.2,
             model=MODEL,
+            debug=debug,
         )
         print(f"\n🗣️ {response}\n")
         if player_word == word:
@@ -57,13 +58,5 @@ def play():
             break
 
 
-def generate_all_answers():
-    """Generate all possible answers for the secret word"""
-    prompts = [
-        word_response_prompt.replace("{{player_word}}", player_word)
-        for player_word in words["drawable"]
-    ]
-
-
 if __name__ == "__main__":
-    play()
+    play(debug=True)

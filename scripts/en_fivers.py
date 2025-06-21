@@ -22,12 +22,10 @@ lexicon = pandas.read_csv(
     lexicon_path, sep="\t", header=None, names=["word", "frequency"]
 ).dropna(subset=["word"])
 nouns = lexicon[lexicon.word.isin(nouns_list)]
-common_nouns = nouns[nouns.frequency > 10_000_000].word.str.upper().to_list()
-print(f"Extracted {len(common_nouns)} common nouns for randomization")
 fivers = nouns[(nouns.word.str.len() == 5) & (~nouns.word.str.contains("-"))]
 playable = fivers.word.str.upper().to_list()
 drawable = fivers[fivers.frequency > 6_000_000].word.str.upper().to_list()
 print(f"{len(playable)} playable, {len(drawable)} drawable")
-data = {"playable": playable, "drawable": drawable, "common_nouns": common_nouns}
+data = {"playable": playable, "drawable": drawable}
 with open(Path(__file__).parent / "instructions" / "en" / "en_fivers.json", "w") as f:
     json.dump(data, f, indent=2)
