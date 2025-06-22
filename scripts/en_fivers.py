@@ -3,20 +3,39 @@ import pandas
 import json
 from pathlib import Path
 
+# DOWNLOAD DATA
+
 lexicon_path = Path("data") / "count_1w.txt"
 download(
     url="https://norvig.com/ngrams/count_1w.txt",
     filename=lexicon_path,
     replace=False,
 )
+moby_categories_path = Path(__file__).parent / "data" / "mobypos.txt"
+download(
+    url="https://www.gutenberg.org/files/3203/files/mobypos.txt",
+    filename=moby_categories_path,
+    replace=False,
+)
+
 word_categories_path = Path(__file__).parent / "data" / "2of12id.json"
 download(
     url="https://raw.githubusercontent.com/felixfischer/categorized-words/refs/heads/master/2of12id.json",
     filename=word_categories_path,
     replace=False,
 )
+
+# CREATE THE SINGULAR NOUNS LIST
+
+nouns_list = set()
+for line in moby_categories_path.read_text(encoding="mac_roman").splitlines():
+    word, categories = line.split("\\")
+    if "N" in categories and "A" not in categories and (word.lower() == word):
+        nouns_list.add(word.lower())
 word_categories = json.loads(word_categories_path.read_text())
-nouns_list = set(word_categories["N"])
+nouns_list = nouns_list.intersection(set(word_categories["N"]))
+
+# CREATE THE POPULAR FIVERS LIST
 
 lexicon = pandas.read_csv(
     lexicon_path, sep="\t", header=None, names=["word", "frequency"]

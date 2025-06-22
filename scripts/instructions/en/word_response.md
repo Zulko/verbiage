@@ -1,6 +1,6 @@
 The player is trying to guess the secret word "{{secret_word}}". They proposed the word "{{player_word}}".
 
-Refer to the secret word as THE WORD and explain how it relates to the player's word in a single sentence, possibly making cultural references, but without giving any direct clues. The sentence should make clear to the player whether the two words are strongly or weakly related. Try to 
+Refer to the secret word as THE WORD and explain how it relates to the player's word in a single sentence, possibly making cultural references, but without giving any direct clues. The sentence should make clear to the player whether the two words are strongly or weakly or not at all related.
 
 Here are some examples:
 - secret word: ALIEN, player word: SAUCER, response: "THE WORD might use a SAUCER to go places" 
