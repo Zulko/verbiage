@@ -1,0 +1,9 @@
+keep_drawable:
+  - EMAIL # not in some lists but very common word.
+  - MEDAL # Common word.
+keep_playable:
+  - VISTA # Nice synonym for "view", "vision"
+avoid_drawable:
+  - ASIDE # Mostly an adverb, not a noun.
+  - CRAZY # Known more as an adjective.
+  - READY # Known more as an adjective.

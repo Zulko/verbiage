@@ -10,15 +10,14 @@ from utils import format_template, run_gemini, run_openai
 load_dotenv()
 
 prompts_path = Path(__file__).parent / "instructions" / "en"
-words_path = prompts_path / "en_fivers.json"
-words = json.loads(words_path.read_text())
+words_path = prompts_path / "en_words.json"
 
 
 def get_client(model):
     return run_gemini if model.startswith("gemini") else run_openai
 
 
-def get_random_word():
+def get_random_word(words):
     print("Picking a word...")
 
     return choice(words["drawable"])
@@ -43,9 +42,9 @@ def generate_things_to_avoid(word, model):
     )
 
 
-def play(debug=False, word=None, things_to_avoid=None, model="gemini-2.5-flash"):
+def play(words, debug=False, word=None, things_to_avoid=None, model="gemini-2.5-flash"):
     if word is None:
-        word = get_random_word()
+        word = get_random_word(words)
     else:
         print(f"Using provided word: {word}")
 
@@ -65,9 +64,18 @@ def play(debug=False, word=None, things_to_avoid=None, model="gemini-2.5-flash")
         if player_word == "quit":
             print("🏁 The solution was:", word)
             break
+        if len(player_word) == 0:
+            continue
+        if len(player_word) != len(word):
+            print(f"⚠️  Please enter a {len(word)}-letter word")
+            continue
+
         if player_word.upper() not in words["playable"]:
             print(f"⚠️  {player_word.upper()} is not in my list")
             continue
+        if player_word.upper() == word:
+            print("🎉 You win! 🏆")
+            break
         print("🔍 Checking...")
         response = client(
             word_response_prompt.replace("{{player_word}}", player_word),
@@ -76,9 +84,6 @@ def play(debug=False, word=None, things_to_avoid=None, model="gemini-2.5-flash")
             debug=debug,
         )
         print(f"\n🗣️ {response}\n")
-        if player_word == word:
-            print("🎉 You win! 🏆")
-            break
 
 
 @click.command()
@@ -89,9 +94,16 @@ def play(debug=False, word=None, things_to_avoid=None, model="gemini-2.5-flash")
     help="AI model to use (default: gemini-2.5-flash)",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode to show the secret word")
-def main(word, model, debug):
+@click.option(
+    "--word-size",
+    default=5,
+    help="Size of the words to play with (default: 5)",
+)
+def main(word, model, debug, word_size):
     """Play the word guessing game."""
-    play(debug=debug, word=word, model=model)
+    all_words = json.loads(words_path.read_text())
+    words = all_words[str(word_size)]
+    play(words=words, debug=debug, word=word, model=model)
 
 
 if __name__ == "__main__":

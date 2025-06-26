@@ -5,7 +5,15 @@ description = "A word game project"
 authors = [{ name = "Author Name", email = "author@example.com" }]
 readme = "README.md"
 requires-python = ">=3.8"
-dependencies = ["google-generativeai", "google-cloud-storage", "click"]
+dependencies = [
+    "google-generativeai",
+    "google-cloud-storage",
+    "click",
+    "pydantic",
+    "pandas",
+    "openai",
+    "pyyaml",
+]
 
 [project.optional-dependencies]
 dev = ["ruff"]
