@@ -9,7 +9,9 @@ from google.genai.types import CreateBatchJobConfig, JobState, HttpOptions
 from google.cloud import storage
 
 
-def _create_batch_request(prompt_id: str, prompt_text: str, temperature: float) -> str:
+def _create_batch_request(
+    prompt_id: str, prompt_text: str, temperature: float, thinking_budget: 0
+) -> str:
     """Create a single batch request object for the Gemini API
 
     Args:
@@ -28,7 +30,9 @@ def _create_batch_request(prompt_id: str, prompt_text: str, temperature: float) 
                 "generationConfig": {
                     "temperature": temperature,
                     "responseMimeType": "text/plain",
+                    "thinkingType": "PARTIAL" if thinking else "NONE",
                 },
+                "thinkingConfig": {"thinkingBudget": thinking_budget},
             },
         }
     )
@@ -166,6 +170,7 @@ def gemini_batch(
     gcs_bucket: Optional[str] = None,
     project_id: Optional[str] = None,
     location: str = "us-central1",
+    thinking_budget: int = 0,
 ) -> dict[str, str]:
     """Runs a batch of prompts through the Gemini API
 
@@ -208,7 +213,9 @@ def gemini_batch(
         # Prepare the batch input file in JSONL format
         requests = "\n".join(
             [
-                _create_batch_request(prompt_id, prompt_text, temperature)
+                _create_batch_request(
+                    prompt_id, prompt_text, temperature, thinking_budget
+                )
                 for prompt_id, prompt_text in prompts.items()
             ]
         )

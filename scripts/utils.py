@@ -24,22 +24,30 @@ def run_gemini(
     response_model: Optional[BaseModel] = None,
     temperature: float = 0.0,
     debug: bool = False,
+    thinking_budget: int = 0,
 ) -> BaseModel | str:
     """Get a response from the Gemini API"""
     client = genai.Client()
     if response_model is not None:
-        config = {
-            "response_mime_type": "application/json",
-            "response_schema": response_model.model_json_schema(),
-            "temperature": temperature,
-        }
+        config = genai.types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=response_model.model_json_schema(),
+            temperature=temperature,
+            thinking_config=genai.types.ThinkingConfig(thinking_budget=thinking_budget),
+        )
     else:
-        config = {"response_mime_type": "text/plain"}
+        config = genai.types.GenerateContentConfig(
+            response_mime_type="text/plain",
+            temperature=temperature,
+            thinking_config=genai.types.ThinkingConfig(thinking_budget=thinking_budget),
+        )
     resp = client.models.generate_content(model=model, contents=prompt, config=config)
     usage = resp.usage_metadata
     if debug:
         print(
-            f"Tokens: {usage.prompt_token_count} in, {usage.candidates_token_count} out"
+            f"Tokens: {usage.prompt_token_count} in, "
+            f"{usage.candidates_token_count} out, "
+            f"{usage.thoughts_token_count} thoughts"
         )
     text = resp.candidates[0].content.parts[0].text
     if response_model is not None:
