@@ -24,22 +24,23 @@ def run_gemini(
     response_model: Optional[BaseModel] = None,
     temperature: float = 0.0,
     debug: bool = False,
-    thinking_budget: int = 0,
+    thinking_budget: int = None,
 ) -> BaseModel | str:
     """Get a response from the Gemini API"""
     client = genai.Client()
+    params = {"temperature": temperature}
+    if thinking_budget is not None:
+        tk_config = genai.types.ThinkingConfig(thinking_budget=thinking_budget)
+        params["thinking_config"] = tk_config
     if response_model is not None:
         config = genai.types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=response_model.model_json_schema(),
-            temperature=temperature,
-            thinking_config=genai.types.ThinkingConfig(thinking_budget=thinking_budget),
+            **params,
         )
     else:
         config = genai.types.GenerateContentConfig(
-            response_mime_type="text/plain",
-            temperature=temperature,
-            thinking_config=genai.types.ThinkingConfig(thinking_budget=thinking_budget),
+            response_mime_type="text/plain", **params
         )
     resp = client.models.generate_content(model=model, contents=prompt, config=config)
     usage = resp.usage_metadata
@@ -62,6 +63,7 @@ def run_openai(
     response_model: Optional[BaseModel] = None,
     temperature: float = 0.0,
     debug: bool = False,
+    thinking_budget: int = None,
 ) -> BaseModel | str:
     """Get a response from the OpenAI API"""
     client = OpenAI()

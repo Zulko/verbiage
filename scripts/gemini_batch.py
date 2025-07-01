@@ -2,6 +2,7 @@ import time
 import json
 import tempfile
 import os
+import warnings
 from pathlib import Path
 from typing import Dict, Optional
 from google import genai
@@ -10,7 +11,7 @@ from google.cloud import storage
 
 
 def _create_batch_request(
-    prompt_id: str, prompt_text: str, temperature: float, thinking_budget: 0
+    prompt_id: str, prompt_text: str, temperature: float, thinking_budget: int = None
 ) -> str:
     """Create a single batch request object for the Gemini API
 
@@ -30,9 +31,8 @@ def _create_batch_request(
                 "generationConfig": {
                     "temperature": temperature,
                     "responseMimeType": "text/plain",
-                    "thinkingType": "PARTIAL" if thinking else "NONE",
+                    "thinkingConfig": {"thinkingBudget": thinking_budget},
                 },
-                "thinkingConfig": {"thinkingBudget": thinking_budget},
             },
         }
     )
@@ -53,6 +53,8 @@ def _parse_result_line(line: str) -> tuple[str | None, str]:
 
         # Extract the response text from the result
         response_text = ""
+        if "error" in result["status"].lower():
+            warnings.warn(f"Error in result: {result}")
         if "response" in result:
             candidates = result["response"].get("candidates", [])
             if candidates and len(candidates) > 0:

@@ -39,7 +39,7 @@ def generate_things_to_avoid(word, model):
         response_model=ThingsToAvoid,
         temperature=0.4,
         model=model,
-        thinking_budget=3000,
+        thinking_budget=None,
     )
 
 
@@ -49,7 +49,7 @@ def play(
     word=None,
     things_to_avoid=None,
     model="gemini-2.5-flash",
-    thinking_budget=0,
+    thinking_budget=None,
 ):
     if word is None:
         word = get_random_word(words)
@@ -97,7 +97,7 @@ def play(
         print(f"\n🗣️ {response}\n")
 
 
-def run_tests(model, debug, word, thinking_budget=0):
+def run_tests(model, debug, word, thinking_budget=None):
     test_words = json.loads((prompts_path / "test_words.json").read_text())
     client = get_client(model)
 
@@ -108,7 +108,7 @@ def run_tests(model, debug, word, thinking_budget=0):
         print(f"\nTHE WORD is {word}")
         things_to_avoid = generate_things_to_avoid(word, model)
         word_response_prompt = format_template(
-            prompts_path / "word_response.md",
+            prompts_path / "word_response_optimized.md",
             secret_word=word,
             avoid=", ".join(things_to_avoid.avoid),
             advice=things_to_avoid.advice,
@@ -116,7 +116,7 @@ def run_tests(model, debug, word, thinking_budget=0):
         for guess in guesses:
             response = client(
                 word_response_prompt.replace("{{player_word}}", guess),
-                temperature=0.2,
+                temperature=1,
                 model=model,
                 debug=debug,
                 thinking_budget=thinking_budget,
@@ -124,7 +124,7 @@ def run_tests(model, debug, word, thinking_budget=0):
             print(response)
 
 
-def generate_batch(words, model, debug, word, output_file, thinking_budget=0):
+def generate_batch(words, model, debug, word, output_file, thinking_budget=None):
     start_time = time.time()
     if word is None:
         print("Picking a random word...")
@@ -135,7 +135,7 @@ def generate_batch(words, model, debug, word, output_file, thinking_budget=0):
 
     print("Generating word responses")
     word_response_prompt = format_template(
-        prompts_path / "word_response.md",
+        prompts_path / "word_response_optimized.md",
         secret_word=word,
         avoid=", ".join(things_to_avoid.avoid),
         advice=things_to_avoid.advice,
@@ -153,7 +153,7 @@ def generate_batch(words, model, debug, word, output_file, thinking_budget=0):
         location="us-central1",
         thinking_budget=thinking_budget,
     )
-    results["the_word"] = word
+    results["solution"] = word
 
     print(f"Writing to file {output_file}")
     with open(output_file, "w") as f:
@@ -185,8 +185,8 @@ def generate_batch(words, model, debug, word, output_file, thinking_budget=0):
 )
 @click.option(
     "--thinking-budget",
-    default=0,
-    help="Budget for thinking in tokens (default: 0)",
+    default=None,
+    help="Budget for thinking in tokens (default: None)",
 )
 def main(word, model, debug, word_size, test, batch, output_file, thinking_budget):
     """Play the word guessing game.
