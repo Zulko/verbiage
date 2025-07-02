@@ -1,0 +1,7 @@
+{
+  "onlyCommonNouns": "No clue for {currentWord}. THE WORD is a singular-form common noun.",
+  "firstClue": "THE WORD is a {length}-letter noun.",
+  "alreadySubmitted": "{currentWord} was already submitted",
+  "datePreposition": "of",
+  "openCalendar": "Open calendar to select date"
+} 

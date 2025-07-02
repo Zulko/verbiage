@@ -1,9 +1,14 @@
 keep_drawable:
   - EMAIL # not in some lists but very common word.
   - MEDAL # Common word.
+  - SHACK # Common word.
+  - CHIEF # Common word.
 keep_playable:
   - VISTA # Nice synonym for "view", "vision"
 avoid_drawable:
   - ASIDE # Mostly an adverb, not a noun.
   - CRAZY # Known more as an adjective.
   - READY # Known more as an adjective.
+  - FIRST # Known more as an adjective.
+  - ROYAL # Known more as an adjective.
+  - BEING # Too difficult?

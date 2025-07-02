@@ -1,0 +1,7 @@
+{
+  "onlyCommonNouns": "Aucun indice pour {currentWord}. LE MOT est un nom commun au singulier.",
+  "firstClue": "LE MOT est un nom de {length} lettres.",
+  "alreadySubmitted": "{currentWord} a déjà été proposé",
+  "datePreposition": "du",
+  "openCalendar": "Ouvrir le calendrier pour sélectionner une date"
+} 
