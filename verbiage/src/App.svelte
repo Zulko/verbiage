@@ -194,7 +194,7 @@
             gameState = "won";
             gameEnding = false; // Remove the element from DOM after animation
             tEnd = Date.now();
-          }, 2000);
+          }, 500);
           return;
         } else if (previousGuesses.includes(currentWord)) {
           errorMessage = $_("alreadySubmitted", {
@@ -268,11 +268,11 @@
       <div
         class="game-container"
         class:animate__animated={gameEnding}
-        class:animate__hinge={gameEnding}
+        class:animate__flipOutY={gameEnding}
       >
         <div
           class:animate__animated={errorMessage}
-          class:animate__shakeX={errorMessage}
+          class:animate__shakeY={errorMessage}
         >
           <WordInput {currentWord} wordSize={puzzle.solution.length} />
         </div>
@@ -324,8 +324,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 100vh;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 2rem 0.2rem;
   }
 
   .clues {
