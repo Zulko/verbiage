@@ -17,7 +17,11 @@
 </script>
 
 <div class="victory">
-  <div class="celebration-icon">🎉</div>
+  <div
+    class="celebration-icon animate__animated animate__bounce animate__infinite animate__slow"
+  >
+    🎉
+  </div>
   <h2>{$_("wellDone")}</h2>
   <p>
     {$_("solvedInTimeAndGuesses", {
@@ -53,7 +57,36 @@
   .celebration-icon {
     font-size: 3rem;
     margin-bottom: 1rem;
-    animation: gentle-bounce 2s ease-in-out infinite;
+    /* Override animate.css bounce to make it smaller */
+    --animate-bounce-transform: translateY(-5px);
+  }
+
+  /* Custom smaller bounce keyframes */
+  .celebration-icon.animate__bounce {
+    animation-name: gentle-bounce;
+  }
+
+  @keyframes gentle-bounce {
+    0%,
+    20%,
+    53%,
+    80%,
+    100% {
+      animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+      transform: translateY(0);
+    }
+    40%,
+    43% {
+      animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+      transform: translateY(-5px);
+    }
+    70% {
+      animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+      transform: translateY(-2px);
+    }
+    90% {
+      transform: translateY(-1px);
+    }
   }
 
   .victory h2 {
@@ -122,22 +155,6 @@
     height: 1rem;
     width: auto;
     margin-left: 0.25rem;
-  }
-
-  @keyframes gentle-bounce {
-    0%,
-    20%,
-    50%,
-    80%,
-    100% {
-      transform: translateY(0);
-    }
-    40% {
-      transform: translateY(-3px);
-    }
-    60% {
-      transform: translateY(-1px);
-    }
   }
 
   /* Responsive adjustments */
