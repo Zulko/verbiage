@@ -58,6 +58,7 @@
       previousGuesses = [];
       gameState = "playing";
       gameEnding = false;
+      currentWord = "";
     }
   });
 
