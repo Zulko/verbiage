@@ -3,5 +3,13 @@
   "firstClue": "LE MOT est un nom de {length} lettres.",
   "alreadySubmitted": "{currentWord} a déjà été proposé",
   "datePreposition": "du",
-  "openCalendar": "Ouvrir le calendrier pour sélectionner une date"
+  "openCalendar": "Ouvrir le calendrier pour sélectionner une date",
+  "wellDone": "Bravo !",
+  "solvedInTimeAndGuesses": "Résolu en {time} avec {count} tentative{plural} !",
+  "newGameAction": "Nouveau jeu",
+  "shareGameAction": "Partager",
+  "visitGithub": "Voir sur GitHub",
+  "shareTitle": "Découvrez ce jeu de mots !",
+  "shareWinTitleGuesses": "J'ai résolu le Verbiage d'aujourd'hui en {time} avec {count} tentatives !",
+  "urlCopied": "Lien copié dans le presse-papiers !"
 } 

@@ -182,7 +182,10 @@
       // Only process Enter if word length matches solution length
       if (currentWord.length === puzzle.solution.length) {
         // Check if word was already submitted
-        if (previousGuesses.includes(currentWord)) {
+        if (currentWord === puzzle.solution) {
+          gameState = "won";
+          tEnd = Date.now();
+        } else if (previousGuesses.includes(currentWord)) {
           errorMessage = $_("alreadySubmitted", {
             values: { currentWord },
           });
@@ -190,10 +193,7 @@
         // Check if the word exists in the puzzle
         else if (puzzle[currentWord]) {
           previousGuesses = [...previousGuesses, currentWord];
-          if (currentWord === puzzle.solution) {
-            gameState = "won";
-            tEnd = Date.now();
-          }
+          console.log(previousGuesses, puzzle.solution);
           currentWord = "";
         } else {
           errorMessage = $_("onlyCommonNouns", {
@@ -272,6 +272,7 @@
     {/if}
 
     {#if gameState === "won"}
+      <div class="solution"><b>THE WORD</b> is <b>{puzzle.solution}</b></div>
       <VictorySection
         onShareGame={shareGame}
         guessCount={previousGuesses.length}
@@ -289,8 +290,14 @@
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap");
+  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap");
 
   main {
+    font-family:
+      "Inter",
+      system-ui,
+      -apple-system,
+      sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;

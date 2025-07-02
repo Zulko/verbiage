@@ -142,7 +142,7 @@ def generate_batch(words, model, debug, word, output_file, thinking_budget=None)
     )
     prompts_by_word = {
         word: word_response_prompt.replace("{{player_word}}", word)
-        for word in words["playable"][:10]
+        for word in words["playable"]
     }
     results, _job = gemini_batch(
         prompts_by_word,

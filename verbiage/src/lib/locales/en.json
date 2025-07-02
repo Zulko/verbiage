@@ -3,5 +3,13 @@
   "firstClue": "THE WORD is a {length}-letter noun.",
   "alreadySubmitted": "{currentWord} was already submitted",
   "datePreposition": "of",
-  "openCalendar": "Open calendar to select date"
+  "openCalendar": "Open calendar to select date",
+  "wellDone": "Well done!",
+  "solvedInTimeAndGuesses": "Solved in {time} with {count} guess{plural}!",
+  "newGameAction": "New Game",
+  "shareGameAction": "Share",
+  "visitGithub": "Visit on GitHub",
+  "shareTitle": "Check out this word puzzle!",
+  "shareWinTitleGuesses": "I solved today's Verbiage in {time} with {count} guesses!",
+  "urlCopied": "Link copied to clipboard!"
 } 
