@@ -121,7 +121,7 @@
   });
 
   async function loadPuzzle({ date, lang }) {
-    const puzzleData = await fetch(`/puzzles/${lang}/${lang}_${date}.json`);
+    const puzzleData = await fetch(`/puzzles/${lang}/${lang}_${date}.json.gz`);
     puzzle = await puzzleData.json();
     console.log({ puzzle });
   }
@@ -292,12 +292,14 @@
     {/if}
 
     {#if gameState === "won"}
-      <div class="solution"><b>THE WORD</b> is <b>{puzzle.solution}</b></div>
-      <VictorySection
-        onShareGame={shareGame}
-        guessCount={previousGuesses.length}
-        elapsedTime={elapsedTimeFormatted()}
-      />
+      <div class="solution-container animate__animated animate__zoomIn">
+        <div class="solution"><b>THE WORD</b> is <b>{puzzle.solution}</b></div>
+        <VictorySection
+          onShareGame={shareGame}
+          guessCount={previousGuesses.length}
+          elapsedTime={elapsedTimeFormatted()}
+        />
+      </div>
     {/if}
   {:else}
     <!-- Loading state while i18n initializes -->
