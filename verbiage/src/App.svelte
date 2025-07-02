@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { _, locale, locales, isLoading } from "svelte-i18n";
   import { fly } from "svelte/transition";
+  import autoAnimate from "@formkit/auto-animate";
   import "./lib/i18n.js";
   import VictorySection from "./components/VictorySection.svelte";
   import LanguageFlags from "./components/LanguageFlags.svelte";
@@ -246,7 +247,7 @@
     />
 
     {#if puzzle}
-      <section class="clues">
+      <section class="clues" use:autoAnimate>
         <Clue
           text={$_("firstClue", { values: { length: puzzle.solution.length } })}
         />
@@ -286,6 +287,7 @@
     {/if}
 
     {#if gameState === "won"}
+      <div class="clue-separator"></div>
       <div class="solution-container animate__animated animate__zoomIn">
         <div class="solution"><b>THE WORD</b> is <b>{puzzle.solution}</b></div>
         <VictorySection
@@ -413,7 +415,7 @@
 
   .solution {
     font-size: 1.5rem;
-    margin-bottom: 1rem;
+    margin: 1rem 0;
   }
 
   .clue-separator {
