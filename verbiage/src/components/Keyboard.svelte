@@ -92,7 +92,7 @@
     user-select: none;
     width: 100%;
     max-width: 1000px;
-    margin: 0 auto;
+    margin: 1rem auto;
     align-items: center;
   }
 

@@ -41,7 +41,7 @@
     flex-direction: row;
     gap: 0.75rem;
     justify-content: center;
-    margin: 0.5rem 0;
+    margin: 2rem 0 0;
   }
 
   .letter {

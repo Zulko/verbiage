@@ -50,21 +50,50 @@
   });
 </script>
 
-<p class="clue">
-  <span bind:this={typedElement}></span>
-</p>
+<div class="clue-container">
+  <!-- Background div with full text at 0 opacity to reserve space -->
+  <div class="clue-background" aria-hidden="true">
+    {@html formattedText}
+  </div>
+
+  <!-- Typewriter effect overlay -->
+  <p class="clue">
+    <span bind:this={typedElement}></span>
+  </p>
+</div>
 
 <style>
-  .clue {
-    text-align: left;
+  .clue-container {
+    position: relative;
+    margin-top: 1rem;
     margin-bottom: 1rem;
+  }
+
+  .clue-background {
+    opacity: 0;
+    text-align: left;
+    line-height: 1.5;
+    pointer-events: none;
+  }
+
+  .clue {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: left;
+    margin: 0;
     line-height: 1.5;
   }
-  :global(.clue .the-word) {
+
+  :global(.clue .the-word),
+  :global(.clue-background .the-word) {
     color: #000000;
     font-weight: 600;
   }
-  :global(.clue .guess) {
+
+  :global(.clue .guess),
+  :global(.clue-background .guess) {
     color: #000000;
     font-weight: 600;
   }

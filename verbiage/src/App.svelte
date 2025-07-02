@@ -261,7 +261,7 @@
       >
         <div
           class:animate__animated={errorMessage}
-          class:animate__shakeY={errorMessage}
+          class:animate__shakeX={errorMessage}
         >
           <WordInput {currentWord} wordSize={puzzle.solution.length} />
         </div>
