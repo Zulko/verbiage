@@ -25,10 +25,7 @@
     })}
   </p>
   <div class="victory-actions">
-    <button onclick={onNewGame} class="share-btn">
-      {$_("newGameAction")}
-    </button>
-    <button onclick={onShareGame} class="new-game-btn">
+    <button onclick={onShareGame} class="action-btn">
       {$_("shareGameAction")}
     </button>
     <p class="github-link">
@@ -48,99 +45,77 @@
 <style>
   .victory {
     text-align: center;
-    padding: 1.5rem 1.25rem;
-    background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 50%, #fef3c7 100%);
-    border: 1px solid #cbd5e1;
-    border-radius: 1rem;
+    padding: 2rem 1.5rem;
     margin-top: 2rem;
-    box-shadow: 0 4px 16px rgba(52, 152, 219, 0.15);
+    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   }
 
   .celebration-icon {
-    font-size: 2.2rem;
-    margin-bottom: 0.5rem;
+    font-size: 3rem;
+    margin-bottom: 1rem;
     animation: gentle-bounce 2s ease-in-out infinite;
   }
 
   .victory h2 {
-    color: #1e293b;
+    color: #000000;
     margin-bottom: 0.5rem;
-    font-size: 1.6rem;
-    font-weight: 600;
+    font-size: 1.8rem;
+    font-weight: 500;
   }
 
   .victory p {
-    margin-bottom: 1.25rem;
-    font-size: 1.1rem;
-    color: #475569;
-    font-weight: 500;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+    color: #000000;
+    font-weight: 400;
   }
 
   .victory-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
     flex-direction: column;
   }
 
-  .share-btn {
-    background: linear-gradient(135deg, #3498db 0%, #2563eb 100%);
-    color: white;
-    border: none;
-    padding: 0.875rem 1.5rem;
-    border-radius: 0.5rem;
+  .action-btn {
+    border-radius: 8px;
+    border: 1px solid #000000;
+    padding: 0.75rem 1.5rem;
     font-size: 1rem;
     font-weight: 500;
+    font-family: inherit;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition:
+      border-color 0.25s,
+      background-color 0.25s;
     width: 100%;
-    box-shadow: 0 3px 8px rgba(52, 152, 219, 0.2);
+    background-color: #ffffff;
+    color: #000000;
   }
 
-  .share-btn:hover {
-    background: linear-gradient(135deg, #2980b9 0%, #1d4ed8 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 5px 12px rgba(52, 152, 219, 0.3);
-  }
-
-  .new-game-btn {
-    background: rgba(255, 255, 255, 0.9);
-    color: #475569;
-    border: 1px solid #e2e8f0;
-    padding: 0.875rem 1.5rem;
-    border-radius: 0.5rem;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    width: 100%;
-    backdrop-filter: blur(10px);
-  }
-
-  .new-game-btn:hover {
-    background: rgba(255, 255, 255, 1);
-    border-color: #3498db;
-    color: #3498db;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  .action-btn:hover {
+    background-color: #000000;
+    color: #ffffff;
   }
 
   .github-link {
-    margin-top: 0.75rem;
+    margin-top: 1rem;
     margin-bottom: 0;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     opacity: 0.7;
   }
 
   .github-link a {
-    color: #64748b;
+    color: #000000;
     text-decoration: underline;
-    text-decoration-color: rgba(100, 116, 139, 0.4);
-    transition: all 0.2s ease;
+    text-decoration-color: rgba(0, 0, 0, 0.3);
+    transition: all 0.25s ease;
     font-weight: 400;
   }
 
   .github-link a:hover {
-    color: #3498db;
-    text-decoration-color: #3498db;
+    color: #000000;
+    text-decoration-color: #000000;
+    opacity: 1;
   }
 
   .github-icon {
@@ -168,61 +143,49 @@
   /* Responsive adjustments */
   @media (max-width: 480px) {
     .victory {
-      padding: 1.25rem 1rem;
+      padding: 1.5rem 1rem;
     }
 
     .celebration-icon {
-      font-size: 2rem;
+      font-size: 2.5rem;
     }
 
     .victory h2 {
-      font-size: 1.5rem;
+      font-size: 1.6rem;
     }
   }
 
   /* Dark mode support */
   @media (prefers-color-scheme: dark) {
-    .victory {
-      background: linear-gradient(
-        135deg,
-        #1a365d 0%,
-        #2d3748 50%,
-        #744210 100%
-      );
-      border: 1px solid #4a5568;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    }
-
     .victory h2 {
       color: #ffffff;
     }
 
     .victory p {
-      color: #cbd5e0;
+      color: #ffffff;
     }
 
-    .new-game-btn {
-      background: rgba(45, 55, 72, 0.9);
-      color: #cbd5e0;
-      border: 1px solid #4a5568;
-      backdrop-filter: blur(10px);
+    .action-btn {
+      background-color: #ffffff;
+      color: #000000;
+      border: 1px solid #ffffff;
     }
 
-    .new-game-btn:hover {
-      background: rgba(45, 55, 72, 1);
-      border-color: #3498db;
-      color: #3498db;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    .action-btn:hover {
+      background-color: #000000;
+      color: #ffffff;
+      border-color: #ffffff;
     }
 
     .github-link a {
-      color: #a0aec0;
-      text-decoration-color: rgba(160, 174, 192, 0.4);
+      color: #ffffff;
+      text-decoration-color: rgba(255, 255, 255, 0.3);
     }
 
     .github-link a:hover {
-      color: #3498db;
-      text-decoration-color: #3498db;
+      color: #ffffff;
+      text-decoration-color: #ffffff;
+      opacity: 1;
     }
 
     .github-icon {

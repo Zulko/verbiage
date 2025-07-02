@@ -4,12 +4,12 @@
   "alreadySubmitted": "{currentWord} was already submitted",
   "datePreposition": "of",
   "openCalendar": "Open calendar to select date",
-  "wellDone": "Well done!",
-  "solvedInTimeAndGuesses": "Solved in {time} with {count} guess{plural}!",
+  "wellDone": "You found it!",
+  "solvedInTimeAndGuesses": "In {time} with {count} guess{plural}!",
   "newGameAction": "New Game",
   "shareGameAction": "Share",
   "visitGithub": "Visit on GitHub",
-  "shareTitle": "Check out this word puzzle!",
+  "shareTitle": "Verbiage - one word every Tuesday and Friday",
   "shareWinTitleGuesses": "I solved today's Verbiage in {time} with {count} guesses!",
   "urlCopied": "Link copied to clipboard!"
 } 

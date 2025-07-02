@@ -253,22 +253,24 @@
     {/if}
 
     {#if gameState === "playing" && puzzle}
-      <div class:shake={errorMessage}>
-        <WordInput {currentWord} wordSize={puzzle.solution.length} />
+      <div class="game-container">
+        <div class:shake={errorMessage}>
+          <WordInput {currentWord} wordSize={puzzle.solution.length} />
+        </div>
+        <div class="error-container">
+          {#if errorMessage}
+            <p class="error" in:fly={{ y: -10, duration: 150 }}>
+              {errorMessage}
+            </p>
+          {/if}
+        </div>
+        <Keyboard
+          lang={settings.lang}
+          {onKeyPress}
+          {currentWord}
+          wordSize={puzzle.solution.length}
+        />
       </div>
-      <div class="error-container">
-        {#if errorMessage}
-          <p class="error" in:fly={{ y: -10, duration: 150 }}>
-            {errorMessage}
-          </p>
-        {/if}
-      </div>
-      <Keyboard
-        lang={settings.lang}
-        {onKeyPress}
-        {currentWord}
-        wordSize={puzzle.solution.length}
-      />
     {/if}
 
     {#if gameState === "won"}
