@@ -45,8 +45,8 @@
 <style>
   .victory {
     text-align: center;
-    padding: 2rem 1.5rem;
-    margin-top: 2rem;
+    padding: 0 1.5rem;
+    margin-top: 1rem;
     font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   }
 

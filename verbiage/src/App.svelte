@@ -11,6 +11,9 @@
   import PuzzleCalendar from "./components/PuzzleCalendar.svelte";
   import puzzleCalendars from "./lib/puzzleCalendars.json";
 
+  // State to track when game is ending
+  let gameEnding = $state(false);
+
   // State management using $state
   let settings = $state({
     date: null,
@@ -52,6 +55,8 @@
       updateURL();
       tStart = Date.now();
       previousGuesses = [];
+      gameState = "playing";
+      gameEnding = false;
     }
   });
 
@@ -183,8 +188,14 @@
       if (currentWord.length === puzzle.solution.length) {
         // Check if word was already submitted
         if (currentWord === puzzle.solution) {
-          gameState = "won";
-          tEnd = Date.now();
+          gameEnding = true;
+          // Delay changing gameState to allow hinge animation to play
+          setTimeout(() => {
+            gameState = "won";
+            gameEnding = false; // Remove the element from DOM after animation
+            tEnd = Date.now();
+          }, 2000);
+          return;
         } else if (previousGuesses.includes(currentWord)) {
           errorMessage = $_("alreadySubmitted", {
             values: { currentWord },
@@ -252,8 +263,12 @@
       </section>
     {/if}
 
-    {#if gameState === "playing" && puzzle}
-      <div class="game-container">
+    {#if (gameState === "playing" || gameEnding) && puzzle}
+      <div
+        class="game-container"
+        class:animate__animated={gameEnding}
+        class:animate__hinge={gameEnding}
+      >
         <div
           class:animate__animated={errorMessage}
           class:animate__shakeX={errorMessage}
@@ -389,5 +404,10 @@
   .loading p {
     color: #666;
     margin-top: 0.5rem;
+  }
+
+  .solution {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
   }
 </style>
