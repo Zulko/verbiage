@@ -78,12 +78,6 @@
     showCalendar = !showCalendar;
   }
 
-  function handleDateSelected(event) {
-    const selectedDate = event.detail;
-    settings.date = selectedDate;
-    showCalendar = false;
-  }
-
   // Component lifecycle
   onMount(() => {
     console.log("Starting Verbiage...");
@@ -249,7 +243,6 @@
       enabledDates={puzzleCalendar}
       bind:date={settings.date}
       lang={settings.lang}
-      on:dateSelected={handleDateSelected}
     />
 
     {#if puzzle}

@@ -13,6 +13,7 @@
   // Convert date strings to Date objects for the datepicker
   // Local state for the picker
   let selectedDate = $state(new Date());
+  $inspect(isOpen);
 
   $effect(() => {
     if (date) {
@@ -28,7 +29,7 @@
 
   function handleDateChange(evt) {
     const pickedDate = new Date(evt.startDate);
-    console.log("date", date);
+    console.log("date", pickedDate, evt);
     const month = (pickedDate.getMonth() + 1).toString().padStart(2, "0");
     const day = pickedDate.getDate().toString().padStart(2, "0");
     date = `${pickedDate.getFullYear()}-${month}-${day}`;
@@ -39,8 +40,8 @@
 {#if isOpen}
   <div class="calendar-wrapper">
     <DatePicker
-      bind:isOpen
-      startDate={date.replace("-", "/")}
+      {isOpen}
+      startDate={date.replace(/-/g, "/")}
       enabledDates={enabledDates.map((date) => date.replace("-", "/"))}
       onDayClick={handleDateChange}
     >
