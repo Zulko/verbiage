@@ -91,7 +91,7 @@
     padding: 0.25rem;
     user-select: none;
     width: 100%;
-    max-width: 500px;
+    max-width: 800px;
     margin: 0 auto;
     align-items: center;
   }

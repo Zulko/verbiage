@@ -3,7 +3,13 @@
   import Typed from "typed.js";
 
   // Props using Svelte 5 runes
-  let { text } = $props();
+  let { text, guess } = $props();
+
+  let formattedText = $derived(
+    text
+      .replace(guess, `<span class="guess">${guess}</span>`)
+      .replace("THE WORD", "<span class='the-word'>THE WORD</span>")
+  );
 
   let typedElement;
   let typed;
@@ -32,7 +38,7 @@
     if (typed && text) {
       typed.destroy();
       typed = new Typed(typedElement, {
-        strings: [text],
+        strings: [formattedText],
         typeSpeed: 20,
         showCursor: true,
         onComplete: () => {
@@ -49,17 +55,17 @@
 </p>
 
 <style>
-  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap");
-
   .clue {
     text-align: left;
     margin-bottom: 1rem;
-    font-family:
-      "Inter",
-      system-ui,
-      -apple-system,
-      sans-serif;
-    font-weight: 400;
     line-height: 1.5;
+  }
+  :global(.clue .the-word) {
+    color: #000000;
+    font-weight: 600;
+  }
+  :global(.clue .guess) {
+    color: #000000;
+    font-weight: 600;
   }
 </style>

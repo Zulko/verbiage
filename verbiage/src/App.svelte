@@ -258,7 +258,8 @@
           text={$_("firstClue", { values: { length: puzzle.solution.length } })}
         />
         {#each previousGuesses as guess}
-          <Clue text={puzzle[guess]} />
+          <div class="clue-separator"></div>
+          <Clue text={puzzle[guess]} {guess} />
         {/each}
       </section>
     {/if}
@@ -311,8 +312,8 @@
 </main>
 
 <style>
-  @import url("https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap");
-  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap");
+  @import url("https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;800&display=swap");
+  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap");
 
   main {
     font-family:
@@ -329,7 +330,7 @@
 
   .clues {
     width: 100%;
-    max-width: 350px;
+    max-width: 380px;
     padding: 0 1rem;
   }
 
@@ -411,5 +412,16 @@
   .solution {
     font-size: 1.5rem;
     margin-bottom: 1rem;
+  }
+
+  .clue-separator {
+    width: 40px;
+    height: 1px;
+    background: #ccc;
+    margin: 0.5rem auto;
+  }
+
+  .clue-separator::before {
+    content: "";
   }
 </style>
