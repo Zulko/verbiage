@@ -254,7 +254,10 @@
 
     {#if gameState === "playing" && puzzle}
       <div class="game-container">
-        <div class:shake={errorMessage}>
+        <div
+          class:animate__animated={errorMessage}
+          class:animate__shakeX={errorMessage}
+        >
           <WordInput {currentWord} wordSize={puzzle.solution.length} />
         </div>
         <div class="error-container">
@@ -322,30 +325,11 @@
     margin-bottom: 0.75rem;
   }
 
-  @keyframes shake {
-    0%,
-    100% {
-      transform: translateX(0);
-    }
-    20%,
-    60% {
-      transform: translateX(-5px);
-    }
-    40%,
-    80% {
-      transform: translateX(5px);
-    }
-  }
-
   .error {
     color: #e53e3e;
     margin: 0;
     text-align: center;
     font-size: 0.875rem;
-  }
-
-  .shake {
-    animation: shake 0.3s ease-in-out;
   }
 
   h1 {
