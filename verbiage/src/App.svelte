@@ -34,7 +34,6 @@
     const [year, month, day] = dateStr.split("-").map((n) => parseInt(n, 10));
     const date = new Date(year, month - 1, day);
     const locale = lang === "fr" ? "fr-FR" : "en-US";
-    console.log(locale);
     return new Intl.DateTimeFormat(locale, {
       day: "numeric",
       month: "long",
@@ -83,7 +82,6 @@
   // Component lifecycle
   onMount(() => {
     console.log("Starting Verbiage...");
-    console.log(puzzleCalendars);
     const urlParams = new URLSearchParams(window.location.search);
     let lang = urlParams.get("lang") || "en";
 
@@ -100,8 +98,6 @@
 
     // Set the initial locale for i18n
     $locale = lang;
-
-    console.log(settings);
   });
 
   // Derived timing values
@@ -119,7 +115,6 @@
   async function loadPuzzle({ date, lang }) {
     const puzzleData = await fetch(`/puzzles/${lang}/${lang}_${date}.json.gz`);
     puzzle = await puzzleData.json();
-    console.log({ puzzle });
   }
 
   function updateURL() {
@@ -200,7 +195,6 @@
         // Check if the word exists in the puzzle
         else if (puzzle[currentWord]) {
           previousGuesses = [...previousGuesses, currentWord];
-          console.log(previousGuesses, puzzle.solution);
           currentWord = "";
         } else {
           errorMessage = $_("onlyCommonNouns", {

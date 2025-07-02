@@ -19,17 +19,14 @@
     if (date) {
       const [year, month, day] = date.split("-").map((n) => parseInt(n, 10));
       const newDate = new Date(year, month - 1, day);
-      console.log("Effect: Setting selectedDate to:", newDate);
       selectedDate = newDate;
     } else {
-      console.log("Effect: date is null/undefined, using current date");
       selectedDate = new Date();
     }
   });
 
   function handleDateChange(evt) {
     const pickedDate = new Date(evt.startDate);
-    console.log("date", pickedDate, evt);
     const month = (pickedDate.getMonth() + 1).toString().padStart(2, "0");
     const day = pickedDate.getDate().toString().padStart(2, "0");
     date = `${pickedDate.getFullYear()}-${month}-${day}`;
