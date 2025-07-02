@@ -334,6 +334,14 @@
     padding: 0 1rem;
   }
 
+  .game-container {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
   .error-container {
     height: 2rem;
     display: flex;

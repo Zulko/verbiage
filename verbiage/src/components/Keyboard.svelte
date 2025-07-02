@@ -87,11 +87,11 @@
   .keyboard {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.25rem;
+    gap: 0.375rem;
+    padding: 0.5rem;
     user-select: none;
     width: 100%;
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
     align-items: center;
   }
@@ -99,7 +99,7 @@
   .row {
     display: flex;
     justify-content: center;
-    gap: 0.25rem;
+    gap: 0.375rem;
     width: auto;
   }
 
@@ -121,14 +121,14 @@
   button {
     flex: 1;
     min-width: 0;
-    height: 3rem;
-    padding: 0 0.25rem;
+    height: 3.5rem;
+    padding: 0 0.5rem;
     border: none;
-    border-radius: 0.25rem;
+    border-radius: 0.375rem;
     background-color: #e2e8f0;
     color: #1a202c;
     font-weight: bold;
-    font-size: clamp(1rem, 4vw, 1.25rem);
+    font-size: clamp(1.2rem, 4.5vw, 1.6rem);
     cursor: pointer;
     transition: all 0.2s;
   }
@@ -143,7 +143,7 @@
 
   button.special {
     flex: 2.5;
-    font-size: clamp(0.9rem, 3.5vw, 1.125rem);
+    font-size: clamp(1.1rem, 4vw, 1.4rem);
     background-color: #cbd5e0;
   }
 
@@ -161,18 +161,24 @@
     cursor: not-allowed;
   }
 
-  @media (max-width: 360px) {
+  @media (max-width: 400px) {
     .keyboard {
-      padding: 0.125rem;
-      gap: 0.125rem;
+      padding: 0.25rem;
+      gap: 0.25rem;
     }
 
     .row {
-      gap: 0.125rem;
+      gap: 0.25rem;
     }
 
     button {
-      height: 2.75rem;
+      height: 3rem;
+      padding: 0 0.25rem;
+      font-size: clamp(1rem, 4vw, 1.3rem);
+    }
+
+    button.special {
+      font-size: clamp(0.95rem, 3.5vw, 1.2rem);
     }
   }
 </style>
