@@ -1,6 +1,6 @@
 {
-  "onlyCommonNouns": "No clue for {currentWord}. THE WORD is a singular-form common noun.",
-  "firstClue": "THE WORD is a {length}-letter common noun, in singular form.",
+  "onlyCommonNouns": "No clue for {currentWord}. THE WORD is a singular (not plural) common noun.",
+  "firstClue": "THE WORD is a {length}-letter singular (not plural) common noun.",
   "alreadySubmitted": "{currentWord} was already submitted",
   "datePreposition": "of",
   "openCalendar": "Open calendar to select date",
