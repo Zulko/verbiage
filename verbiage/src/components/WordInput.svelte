@@ -2,13 +2,34 @@
   import { _ } from "svelte-i18n";
 
   let { currentWord, wordSize } = $props();
+
+  let previousLength = $state(0);
+  let pulsedIndex = $state(-1);
+
+  // Track when a new letter is added
+  $effect(() => {
+    if (currentWord.length > previousLength) {
+      // A letter was added, pulse the new letter
+      pulsedIndex = currentWord.length - 1;
+
+      // Remove the pulse class after animation completes
+      setTimeout(() => {
+        pulsedIndex = -1;
+      }, 200);
+    }
+    previousLength = currentWord.length;
+  });
 </script>
 
 <div class="word-input">
   {#each Array(wordSize)
     .fill(0)
     .map((_, i) => i) as index}
-    <div class="letter" class:empty={!currentWord[index]}>
+    <div
+      class="letter"
+      class:empty={!currentWord[index]}
+      class:pulse={index === pulsedIndex}
+    >
       {currentWord[index]}
     </div>
   {/each}
@@ -40,6 +61,23 @@
 
   .letter:not(.empty) {
     border-color: #878a8c;
+  }
+
+  .letter.pulse {
+    animation: pulse 0.2s ease-out;
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+      box-shadow: 0 0 4px rgba(135, 138, 140, 0.3);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
 
   @media (max-width: 600px) {
