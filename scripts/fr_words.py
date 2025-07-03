@@ -1,21 +1,8 @@
 from utils import download
+from pathlib import Path
 import pandas
 import json
 import re
-from pathlib import Path
-
-lexicon_path = Path(__file__).parent / "data" / "Lexique383.tsv"
-download(
-    url="http://www.lexique.org/databases/Lexique383/Lexique383.tsv",
-    filename=lexicon_path,
-    replace=False,
-)
-lexicon = pandas.read_csv(lexicon_path, sep="\t").dropna(subset=["ortho"])
-fivers = lexicon[(lexicon.ortho.str.len() == 5) & (~lexicon.ortho.str.contains("-"))]
-# not_a_verb = (fivers.cgramortho != "VER") & (fivers.cgramortho != "AUX,VER")
-# not_conjugated = fivers.lemme == fivers.ortho
-# unconjugated = fivers[not_a_verb | not_conjugated]
-nouns = fivers[fivers.cgram == "NOM"]
 
 
 def replace_accents(word):
@@ -36,12 +23,60 @@ def replace_accents(word):
     return word
 
 
-unaccented_dict = {word: replace_accents(word).upper() for word in nouns.ortho}
-accented_dict = {unaccented: word for word, unaccented in unaccented_dict.items()}
-playable = [unaccented_dict[word] for word in nouns.ortho]
-not_rare = nouns[(nouns.freqfilms2 > 0) & (nouns.freqlivres > 0)]
-drawable = [unaccented_dict[word] for word in not_rare.ortho]
-print(f"Found {len(drawable)} drawable words, {len(playable)} playable words")
-data = {"drawable": drawable, "playable": playable, "accented_dict": accented_dict}
-with open(Path(__file__).parent / "fr_fivers.json", "w") as f:
-    json.dump(data, f)
+lexicon_path = Path(__file__).parent / "data" / "Lexique383.tsv"
+download(
+    url="http://www.lexique.org/databases/Lexique383/Lexique383.tsv",
+    filename=lexicon_path,
+    replace=False,
+)
+lexicon = pandas.read_csv(lexicon_path, sep="\t").dropna(subset=["ortho"])
+nouns = lexicon[
+    (lexicon.cgram == "NOM")
+    & (lexicon.nombre != "p")
+    & (lexicon.deflem > 40)
+    & (lexicon.freqfilms2 > 0)
+    & (lexicon.freqlivres > 0)
+]
+print("found", len(nouns), "singular nouns")
+
+adjectives = set(
+    [replace_accents(word).upper() for word in lexicon[(lexicon.cgram == "ADJ")].ortho]
+)
+print("found", len(adjectives), "adjectives")
+
+unaccented_words = set(
+    [word.upper() for word in nouns.ortho if replace_accents(word) == word]
+)
+
+unaccented_dict = {word.upper(): replace_accents(word).upper() for word in nouns.ortho}
+accented_dict = {
+    unaccented: word
+    for word, unaccented in unaccented_dict.items()
+    if unaccented != word and unaccented not in unaccented_words
+}
+
+
+def get_words(size):
+    sized_nouns = nouns[
+        (nouns.ortho.str.len() == size) & (~nouns.ortho.str.contains("-"))
+    ]
+    known_nouns = sized_nouns[(sized_nouns.deflem > 80) & (sized_nouns.freqfilms2 > 5)]
+    playable = [unaccented_dict[word.upper()] for word in sized_nouns.ortho]
+    drawable = [
+        unaccented_dict[word.upper()]
+        for word in known_nouns.ortho
+        if word not in adjectives
+    ]
+    print(f"{len(playable)} playable, {len(drawable)} drawable of size {size}")
+    return {"drawable": drawable, "playable": playable}
+
+
+data = {n: get_words(n) for n in [4, 5, 6]}
+all_words = set(word for subdata in data.values() for word in subdata["drawable"])
+data["accented_dict"] = {k: v for k, v in accented_dict.items() if k in all_words}
+with open(Path(__file__).parent / "instructions" / "fr" / "fr_words.json", "w") as f:
+    json.dump(data, f, indent=2)
+with open(
+    Path(__file__).parent.parent / "verbiage" / "public" / "fr_accented_dict.json", "w"
+) as f:
+    json.dump(accented_dict, f, indent=2)

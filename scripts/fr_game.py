@@ -11,24 +11,26 @@ from gemini_batch import gemini_batch
 # Useful to attribute special keys to this project
 load_dotenv()
 
-prompts_path = Path(__file__).parent / "instructions" / "en"
-words_path = prompts_path / "en_words.json"
+prompts_path = Path(__file__).parent / "instructions" / "fr"
+words_path = prompts_path / "fr_words.json"
 
 
 def get_client(model):
-    return run_gemini if model.startswith("gemini") else run_openai
+    if model.startswith("gemini"):
+        return run_gemini
+    return run_openai
 
 
 def get_random_word(words):
-    print("Picking a word...")
+    print("Sélection d'un mot...")
 
     return choice(words["drawable"])
 
 
 def generate_things_to_avoid(word, model):
-    class ThingsToAvoid(BaseModel):
-        avoid: list[str]
-        advice: str
+    class MotsAEviter(BaseModel):
+        mots_interdits: list[str]
+        conseils: str
 
     things_to_avoid_prompt = format_template(
         prompts_path / "things_to_avoid.md", word=word
@@ -36,7 +38,7 @@ def generate_things_to_avoid(word, model):
     client = get_client(model)
     return client(
         things_to_avoid_prompt,
-        response_model=ThingsToAvoid,
+        response_model=MotsAEviter,
         temperature=0.4,
         model=model,
         thinking_budget=None,
@@ -45,6 +47,7 @@ def generate_things_to_avoid(word, model):
 
 def play(
     words,
+    accented_dict,
     debug=False,
     word=None,
     things_to_avoid=None,
@@ -54,41 +57,44 @@ def play(
     if word is None:
         word = get_random_word(words)
     else:
-        print(f"Using provided word: {word}")
+        print(f"Mot secret: {word}")
 
-    print("Generating advice on things to avoid...")
-    things_to_avoid = generate_things_to_avoid(word, model)
+    print("Génération des conseils sur les mots à éviter...")
+    word_with_accents = accented_dict.get(word, word)
+    things_to_avoid = generate_things_to_avoid(word_with_accents, model)
 
     client = get_client(model)
     word_response_prompt = format_template(
         prompts_path / "word_response.md",
-        secret_word=word,
-        avoid=", ".join(things_to_avoid.avoid),
-        advice=things_to_avoid.advice,
+        secret_word=word_with_accents,
+        avoid=", ".join(things_to_avoid.mots_interdits),
+        advice=things_to_avoid.conseils,
     )
-    print("🎮 Let's play!")
+    print("🎮 C'est parti!")
     if debug:
-        print(f"🔍 The secret word is {word}")
+        print(f"🔍 Le mot secret est {word}")
+        print(f"🔍 Les mots à éviter sont {things_to_avoid.mots_interdits}")
     while True:
-        player_word = input("💭 Your guess >>> ")
-        if player_word == "quit":
-            print("🏁 The solution was:", word)
+        player_word = input("💭 Votre mot >>> ").upper()
+        if player_word == "QUIT":
+            print("🏁 Le mot secret était:", word)
             break
         if len(player_word) == 0:
             continue
         if len(player_word) != len(word):
-            print(f"⚠️  Please enter a {len(word)}-letter word")
+            print(f"⚠️  Entrez un mot de {len(word)} lettres")
             continue
 
-        if player_word.upper() not in words["playable"]:
-            print(f"⚠️  {player_word.upper()} is not in my list")
+        if player_word not in words["playable"]:
+            print(f"⚠️  {player_word} n'est pas dans ma liste")
             continue
-        if player_word.upper() == word:
-            print("🎉 You win! 🏆")
+        if player_word == word:
+            print("🎉 Vous avez gagné! 🏆")
             break
-        print("🔍 Checking...")
+        print("🔍 Vérification...")
+        player_word_with_accents = accented_dict.get(player_word, player_word)
         response = client(
-            word_response_prompt.replace("{{player_word}}", player_word),
+            word_response_prompt.replace("{{player_word}}", player_word_with_accents),
             temperature=0.2,
             model=model,
             debug=debug,
@@ -97,7 +103,7 @@ def play(
         print(f"\n🗣️ {response}\n")
 
 
-def run_tests(model, debug, word, thinking_budget=None):
+def run_tests(model, debug, word, accented_dict, thinking_budget=None):
     test_words = json.loads((prompts_path / "test_words.json").read_text())
     client = get_client(model)
 
@@ -105,17 +111,19 @@ def run_tests(model, debug, word, thinking_budget=None):
         test_words = {word: test_words[word]}
 
     for word, guesses in test_words.items():
-        print(f"\nTHE WORD is {word}")
-        things_to_avoid = generate_things_to_avoid(word, model)
+        print(f"LE MOT est {word}")
+        accented_word = accented_dict.get(word, word)
+        things_to_avoid = generate_things_to_avoid(accented_word, model)
         word_response_prompt = format_template(
             prompts_path / "word_response.md",
-            secret_word=word,
-            avoid=", ".join(things_to_avoid.avoid),
-            advice=things_to_avoid.advice,
+            secret_word=accented_word,
+            avoid=", ".join(things_to_avoid.mots_interdits),
+            advice=things_to_avoid.conseils,
         )
         for guess in guesses:
+            guess_with_accents = accented_dict.get(guess, guess)
             response = client(
-                word_response_prompt.replace("{{player_word}}", guess),
+                word_response_prompt.replace("{{player_word}}", guess_with_accents),
                 temperature=0.2,
                 model=model,
                 debug=debug,
@@ -131,17 +139,21 @@ def generate_batch(words, model, debug, word, output_file, thinking_budget=None)
         word = get_random_word(words)
 
     print("Generating words to avoid")
-    things_to_avoid = generate_things_to_avoid(word, model)
+    accented_dict = words["accented_dict"]
+    word_with_accents = accented_dict.get(word, word)
+    things_to_avoid = generate_things_to_avoid(word_with_accents, model)
 
     print("Generating word responses")
     word_response_prompt = format_template(
         prompts_path / "word_response.md",
-        secret_word=word,
-        avoid=", ".join(things_to_avoid.avoid),
-        advice=things_to_avoid.advice,
+        secret_word=word_with_accents,
+        avoid=", ".join(things_to_avoid.mots_interdits),
+        advice=things_to_avoid.conseils,
     )
     prompts_by_word = {
-        word: word_response_prompt.replace("{{player_word}}", word)
+        word: word_response_prompt.replace(
+            "{{player_word}}", accented_dict.get(word, word)
+        )
         for word in words["playable"]
     }
     results, _job = gemini_batch(
@@ -207,12 +219,19 @@ def main(word, model, debug, word_size, test, batch, output_file, thinking_budge
         word_size = len(word)
     words = all_words[str(word_size)]
     if test:
-        run_tests(model=model, debug=debug, word=word, thinking_budget=thinking_budget)
+        run_tests(
+            model=model,
+            debug=debug,
+            word=word,
+            thinking_budget=thinking_budget,
+            accented_dict=all_words["accented_dict"],
+        )
     elif batch:
         if output_file is None:
             output_file = f"batch_{model}_{word_size}.json"
         generate_batch(
             words=words,
+            accented_dict=all_words["accented_dict"],
             model=model,
             debug=debug,
             word=word,
@@ -226,6 +245,7 @@ def main(word, model, debug, word_size, test, batch, output_file, thinking_budge
             word=word,
             model=model,
             thinking_budget=thinking_budget,
+            accented_dict=all_words["accented_dict"],
         )
 
 
