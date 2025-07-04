@@ -41,6 +41,7 @@
         strings: [formattedText],
         typeSpeed: 20,
         showCursor: true,
+        startDelay: 600,
         onComplete: () => {
           typed.cursor.style.display = "none";
           // Optional: callback when typing is complete

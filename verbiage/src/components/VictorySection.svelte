@@ -22,7 +22,7 @@
   >
     🎉
   </div>
-  <h2>{$_("wellDone")}</h2>
+  <h3>{$_("wellDone")}</h3>
   <p>
     {$_("solvedInTimeAndGuesses", {
       values: { time: elapsedTime, count: guessCount, plural },

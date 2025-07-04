@@ -175,17 +175,31 @@
     errorMessage = "";
 
     if (key === "Enter") {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth",
+      });
       // Only process Enter if word length matches solution length
       if (currentWord.length === puzzle.solution.length) {
         // Check if word was already submitted
         if (currentWord === puzzle.solution) {
           gameEnding = true;
           // Delay changing gameState to allow hinge animation to play
+          window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: "smooth",
+          });
           setTimeout(() => {
             gameState = "won";
             gameEnding = false; // Remove the element from DOM after animation
             tEnd = Date.now();
           }, 500);
+          setTimeout(() => {
+            window.scrollTo({
+              top: document.body.scrollHeight,
+              behavior: "smooth",
+            });
+          }, 1000);
           return;
         } else if (previousGuesses.includes(currentWord)) {
           errorMessage = $_("alreadySubmitted", {
@@ -196,6 +210,13 @@
         else if (puzzle[currentWord]) {
           previousGuesses = [...previousGuesses, currentWord];
           currentWord = "";
+          // Scroll to bottom after adding new guess
+          setTimeout(() => {
+            window.scrollTo({
+              top: document.body.scrollHeight,
+              behavior: "smooth",
+            });
+          }, 220);
         } else {
           errorMessage = $_("onlyCommonNouns", {
             values: { currentWord },
@@ -316,6 +337,8 @@
     align-items: center;
     justify-content: flex-start;
     padding: 2rem 0.2rem;
+    overflow-y: hidden;
+    overflow-x: hidden;
   }
 
   .clues {

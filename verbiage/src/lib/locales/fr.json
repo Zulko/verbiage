@@ -4,12 +4,12 @@
   "alreadySubmitted": "{currentWord} a déjà été proposé",
   "datePreposition": "du",
   "openCalendar": "Ouvrir le calendrier pour sélectionner une date",
-  "wellDone": "Bravo !",
-  "solvedInTimeAndGuesses": "Résolu en {time} avec {count} tentative{plural} !",
+  "wellDone": "Bravo!",
+  "solvedInTimeAndGuesses": "Résolu en {count} coup{plural} ({time}) !",
   "newGameAction": "Nouveau jeu",
   "shareGameAction": "Partager",
-  "visitGithub": "Voir sur GitHub",
-  "shareTitle": "Découvrez ce jeu de mots !",
-  "shareWinTitleGuesses": "J'ai résolu le Verbiage d'aujourd'hui en {time} avec {count} tentatives !",
+  "visitGithub": "Visiter le project sur GitHub",
+  "shareTitle": "Verbiage - un mot chaque mardi et vendredi",
+  "shareWinTitleGuesses": "J'ai résolu le Verbiage d'aujourd'hui en {count} coup{plural} ({time}) !",
   "urlCopied": "Lien copié dans le presse-papiers !"
 } 
