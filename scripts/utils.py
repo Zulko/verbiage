@@ -225,9 +225,10 @@ class VerbiageGame:
             return self.all_words.get("accented_dict", {})
         return {}
 
-    def get_word_with_accents(self, word, accented_dict):
+    def get_word_with_accents(self, word):
         """Get word with accents if available, otherwise return original."""
         if self.config["has_accents"]:
+            accented_dict = self.get_accented_dict()
             return accented_dict.get(word, word)
         return word
 
@@ -256,7 +257,6 @@ class VerbiageGame:
     ):
         """Play the interactive word guessing game."""
         words = self.all_words[str(word_size)]
-        accented_dict = self.get_accented_dict()
 
         if word is None:
             word = self.get_random_word(words)
@@ -264,7 +264,7 @@ class VerbiageGame:
             print(self.config["messages"]["using_word"].format(word))
 
         print(self.config["messages"]["generating_advice"])
-        word_with_accents = self.get_word_with_accents(word, accented_dict)
+        word_with_accents = self.get_word_with_accents(word)
         things_to_avoid = self.generate_things_to_avoid(word_with_accents, model)
 
         client = self.get_client(model)
@@ -309,9 +309,7 @@ class VerbiageGame:
                 break
 
             print(self.config["messages"]["checking"])
-            player_word_with_accents = self.get_word_with_accents(
-                normalized_word, accented_dict
-            )
+            player_word_with_accents = self.get_word_with_accents(normalized_word)
             response = client(
                 word_response_prompt.replace(
                     "{{player_word}}", player_word_with_accents
@@ -329,14 +327,13 @@ class VerbiageGame:
         """Run tests on a series of words."""
         test_words = json.loads((self.prompts_path / "test_words.json").read_text())
         client = self.get_client(model)
-        accented_dict = self.get_accented_dict()
 
         if word is not None:
             test_words = {word: test_words[word]}
 
         for word, guesses in test_words.items():
             print(f"\n{self.config['messages']['test_word_prefix'].format(word)}")
-            word_with_accents = self.get_word_with_accents(word, accented_dict)
+            word_with_accents = self.get_word_with_accents(word)
             things_to_avoid = self.generate_things_to_avoid(word_with_accents, model)
             word_response_prompt = format_template(
                 self.prompts_path / "word_response.md",
@@ -345,7 +342,7 @@ class VerbiageGame:
                 advice=getattr(things_to_avoid, self.config["advice_field"]),
             )
             for guess in guesses:
-                guess_with_accents = self.get_word_with_accents(guess, accented_dict)
+                guess_with_accents = self.get_word_with_accents(guess)
                 response = client(
                     word_response_prompt.replace("{{player_word}}", guess_with_accents),
                     temperature=0.2,
@@ -370,13 +367,12 @@ class VerbiageGame:
 
         start_time = time.time()
         words = self.all_words[str(word_size)]
-        accented_dict = self.get_accented_dict()
 
         if word is None:
             word = self.get_random_word(words)
 
         print("Generating words to avoid")
-        word_with_accents = self.get_word_with_accents(word, accented_dict)
+        word_with_accents = self.get_word_with_accents(word)
         things_to_avoid = self.generate_things_to_avoid(word_with_accents, model)
 
         print("Generating word responses")
@@ -389,7 +385,7 @@ class VerbiageGame:
 
         prompts_by_word = {
             word: word_response_prompt.replace(
-                "{{player_word}}", self.get_word_with_accents(word, accented_dict)
+                "{{player_word}}", self.get_word_with_accents(word)
             )
             for word in words["playable"]
         }
