@@ -13,7 +13,6 @@
   // Convert date strings to Date objects for the datepicker
   // Local state for the picker
   let selectedDate = $state(new Date());
-  $inspect(isOpen);
 
   $effect(() => {
     if (date) {
