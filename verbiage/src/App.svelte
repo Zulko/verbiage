@@ -266,6 +266,7 @@
       <section class="clues" use:autoAnimate>
         <Clue
           text={$_("firstClue", { values: { length: puzzle.solution.length } })}
+          listOfBoldWords={settings.lang === "en" ? ["THE WORD"] : ["LE MOT"]}
         />
         {#each previousGuesses as guess}
           <div class="clue-separator"></div>

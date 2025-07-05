@@ -3,12 +3,10 @@
   import Typed from "typed.js";
 
   // Props using Svelte 5 runes
-  let { text, guess } = $props();
+  let { text, listOfBoldWords = [] } = $props();
 
   let formattedText = $derived(
-    text
-      .replace(guess, `<span class="guess">${guess}</span>`)
-      .replace("THE WORD", "<span class='the-word'>THE WORD</span>")
+    text.replace(listOfBoldWords, "<span class='the-word'>THE WORD</span>")
   );
 
   let typedElement;
