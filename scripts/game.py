@@ -1,10 +1,46 @@
 import click
+from functools import wraps
 from dotenv import load_dotenv
 from VerbiageGame import VerbiageGame
 from gemini_batch import gemini_batch
 
 # Useful to attribute special keys to this project
 load_dotenv()
+
+
+def common_options(f):
+    """Common options shared across all commands."""
+
+    @click.option(
+        "--language",
+        default="en",
+        type=click.Choice(["en", "fr"]),
+        help="Language for the game (default: en)",
+    )
+    @click.option("--word", help="Force a specific word for the game")
+    @click.option(
+        "--model",
+        default="gemini-2.5-flash",
+        help="AI model to use (default: gemini-2.5-flash)",
+    )
+    @click.option(
+        "--thinking-budget",
+        default=None,
+        help="Budget for thinking in tokens (default: None)",
+    )
+    @click.option(
+        "--debug", is_flag=True, help="Enable debug mode to show the secret word"
+    )
+    @click.option(
+        "--word-size",
+        default=5,
+        help="Size of the words to play with (default: 5)",
+    )
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return wrapper
 
 
 @click.group()
@@ -21,33 +57,12 @@ def main():
 
 
 @main.command()
-@click.option(
-    "--language",
-    default="en",
-    type=click.Choice(["en", "fr"]),
-    help="Language for the game (default: en)",
-)
-@click.option("--word", help="Force a specific word for the game")
-@click.option(
-    "--model",
-    default="gemini-2.5-flash",
-    help="AI model to use (default: gemini-2.5-flash)",
-)
-@click.option("--debug", is_flag=True, help="Enable debug mode to show the secret word")
-@click.option(
-    "--word-size",
-    default=5,
-    help="Size of the words to play with (default: 5)",
-)
-@click.option(
-    "--thinking-budget",
-    default=None,
-    help="Budget for thinking in tokens (default: None)",
-)
+@common_options
 def play(language, word, model, debug, word_size, thinking_budget):
     """Play the word guessing game."""
     # Create game instance for the specified language
     game = VerbiageGame(language=language)
+    print(debug)
 
     if word is not None:
         word_size = len(word)
@@ -62,25 +77,8 @@ def play(language, word, model, debug, word_size, thinking_budget):
 
 
 @main.command()
-@click.option(
-    "--language",
-    default="en",
-    type=click.Choice(["en", "fr"]),
-    help="Language for the game (default: en)",
-)
-@click.option("--word", help="Force a specific word for the game")
-@click.option(
-    "--model",
-    default="gemini-2.5-flash",
-    help="AI model to use (default: gemini-2.5-flash)",
-)
-@click.option("--debug", is_flag=True, help="Enable debug mode to show the secret word")
-@click.option(
-    "--thinking-budget",
-    default=None,
-    help="Budget for thinking in tokens (default: None)",
-)
-def test(language, word, model, debug, thinking_budget):
+@common_options
+def test(language, word, model, debug, thinking_budget, word_size):
     """Run tests on a series of words."""
     # Create game instance for the specified language
     game = VerbiageGame(language=language)
@@ -89,29 +87,7 @@ def test(language, word, model, debug, thinking_budget):
 
 
 @main.command()
-@click.option(
-    "--language",
-    default="en",
-    type=click.Choice(["en", "fr"]),
-    help="Language for the game (default: en)",
-)
-@click.option("--word", help="Force a specific word for the game")
-@click.option(
-    "--model",
-    default="gemini-2.5-flash",
-    help="AI model to use (default: gemini-2.5-flash)",
-)
-@click.option("--debug", is_flag=True, help="Enable debug mode to show the secret word")
-@click.option(
-    "--word-size",
-    default=5,
-    help="Size of the words to play with (default: 5)",
-)
-@click.option(
-    "--thinking-budget",
-    default=None,
-    help="Budget for thinking in tokens (default: None)",
-)
+@common_options
 def daily_puzzle(language, word, model, debug, word_size, thinking_budget):
     """Automatically generate a daily word."""
     # Create game instance for the specified language
@@ -130,32 +106,13 @@ def daily_puzzle(language, word, model, debug, word_size, thinking_budget):
 
 
 @main.command()
+@common_options
 @click.option(
-    "--language",
-    default="en",
-    type=click.Choice(["en", "fr"]),
-    help="Language for the game (default: en)",
-)
-@click.option("--word", help="Force a specific word for the game")
-@click.option(
-    "--model",
-    default="gemini-2.5-flash",
-    help="AI model to use (default: gemini-2.5-flash)",
-)
-@click.option(
-    "--output-file", default=None, help="Path to the output file for batch generation"
-)
-@click.option(
-    "--word-size",
-    default=5,
-    help="Size of the words to play with (default: 5)",
-)
-@click.option(
-    "--thinking-budget",
+    "--output-file",
     default=None,
-    help="Budget for thinking in tokens (default: None)",
+    help="Path to the output file for batch generation",
 )
-def batch(language, word, model, output_file, word_size, thinking_budget):
+def batch(language, word, model, output_file, word_size, thinking_budget, debug):
     """Run all the playable words through the model."""
     # Create game instance for the specified language
     game = VerbiageGame(language=language)

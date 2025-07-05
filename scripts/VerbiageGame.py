@@ -9,19 +9,6 @@ import time
 import gzip
 from random import choice
 
-# Import will be handled by the game files that use this class
-
-
-def download(url, filename, replace=False):
-    """Download the file (check if it already exists)"""
-    if Path(filename).exists() and not replace:
-        print(f"File {filename} already exists")
-        return
-    print(f"Downloading {url} to {filename}")
-    response = requests.get(url)
-    with open(filename, "wb") as f:
-        f.write(response.content)
-
 
 def run_gemini(
     prompt,
@@ -122,7 +109,7 @@ class VerbiageGame:
     A unified game class that handles both English and French word guessing games.
     """
 
-    def __init__(self, language: str = "en"):
+    def __init__(self, language: str = "en", debug: bool = False):
         """
         Initialize the game with the specified language.
 
@@ -141,6 +128,12 @@ class VerbiageGame:
 
         # Language-specific configurations
         self._setup_language_config()
+        self.debug = debug
+
+    def debug_print(self, message):
+        """Print a message if debug is enabled."""
+        if self.debug:
+            print(message)
 
     def _setup_language_config(self):
         """Setup language-specific configurations."""
@@ -259,12 +252,16 @@ class VerbiageGame:
 
         if word is None:
             word = self.get_random_word(words)
+            self.debug_print(self.config["messages"]["secret_word"].format(word))
         else:
             print(self.config["messages"]["using_word"].format(word))
 
         print(self.config["messages"]["generating_advice"])
         word_with_accents = self.get_word_with_accents(word)
         things_to_avoid = self.generate_things_to_avoid(word_with_accents, model)
+        self.debug_print(
+            f"Things to avoid: {getattr(things_to_avoid, self.config['avoid_field'])}"
+        )
 
         client = self.get_client(model)
         word_response_prompt = format_template(
@@ -275,12 +272,6 @@ class VerbiageGame:
         )
 
         print(self.config["messages"]["lets_play"])
-        if debug:
-            print(self.config["messages"]["secret_word"].format(word))
-            if self.config["has_accents"]:
-                print(
-                    f"🔍 Les mots à éviter sont {getattr(things_to_avoid, self.config['avoid_field'])}"
-                )
 
         while True:
             player_word = input(self.config["messages"]["input_prompt"])
