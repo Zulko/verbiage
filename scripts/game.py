@@ -1,6 +1,6 @@
 import click
 from dotenv import load_dotenv
-from utils import VerbiageGame
+from VerbiageGame import VerbiageGame
 from gemini_batch import gemini_batch
 
 # Useful to attribute special keys to this project
