@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import click
 from utils import format_template, run_gemini, run_openai
 from gemini_batch import gemini_batch
+import gzip
 
 # Useful to attribute special keys to this project
 load_dotenv()
@@ -22,8 +23,6 @@ def get_client(model):
 
 
 def get_random_word(words):
-    print("Sélection d'un mot...")
-
     return choice(words["drawable"])
 
 
@@ -132,14 +131,15 @@ def run_tests(model, debug, word, accented_dict, thinking_budget=None):
             print(response)
 
 
-def generate_batch(words, model, debug, word, output_file, thinking_budget=None):
+def generate_batch(
+    accented_dict, words, model, word, output_file, thinking_budget=None
+):
     start_time = time.time()
     if word is None:
         print("Picking a random word...")
         word = get_random_word(words)
 
     print("Generating words to avoid")
-    accented_dict = words["accented_dict"]
     word_with_accents = accented_dict.get(word, word)
     things_to_avoid = generate_things_to_avoid(word_with_accents, model)
 
@@ -154,7 +154,7 @@ def generate_batch(words, model, debug, word, output_file, thinking_budget=None)
         word: word_response_prompt.replace(
             "{{player_word}}", accented_dict.get(word, word)
         )
-        for word in words["playable"]
+        for word in words["playable"][:30]
     }
     results, _job = gemini_batch(
         prompts_by_word,
@@ -168,8 +168,12 @@ def generate_batch(words, model, debug, word, output_file, thinking_budget=None)
     results["solution"] = word
 
     print(f"Writing to file {output_file}")
-    with open(output_file, "w") as f:
-        json.dump(results, f)
+    if output_file.endswith(".json.gz"):
+        with gzip.open(output_file, "wt") as f:
+            json.dump(results, f)
+    else:
+        with open(output_file, "w") as f:
+            json.dump(results, f)
     print(f"Done in {int(time.time() - start_time)} seconds")
 
 
@@ -233,7 +237,6 @@ def main(word, model, debug, word_size, test, batch, output_file, thinking_budge
             words=words,
             accented_dict=all_words["accented_dict"],
             model=model,
-            debug=debug,
             word=word,
             output_file=output_file,
             thinking_budget=thinking_budget,

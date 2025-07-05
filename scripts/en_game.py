@@ -19,7 +19,7 @@ def get_client(model):
     return run_gemini if model.startswith("gemini") else run_openai
 
 
-def get_random_word(words):
+def get_random_word(words, avoid=None):
     print("Picking a word...")
 
     return choice(words["drawable"])
