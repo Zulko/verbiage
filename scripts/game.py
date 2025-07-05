@@ -8,6 +8,12 @@ load_dotenv()
 
 
 @click.command()
+@click.option(
+    "--language",
+    default="en",
+    type=click.Choice(["en", "fr"]),
+    help="Language for the game (default: en)",
+)
 @click.option("--word", help="Force a specific word for the game")
 @click.option(
     "--model",
@@ -34,22 +40,23 @@ load_dotenv()
     default=None,
     help="Budget for thinking in tokens (default: None)",
 )
-def main(word, model, debug, word_size, test, batch, output_file, thinking_budget):
-    """Play the word guessing game.
+def main(
+    language, word, model, debug, word_size, test, batch, output_file, thinking_budget
+):
+    """Play the word guessing game in English or French.
 
     Examples:
-        python en_game.py --word-size 5 --batch --output-file batch_gemini_5.json
-        python en_game.py --word-size 5 --batch --output-file batch_gemini_5.json --debug
-        python en_game.py --word-size 5 --test --debug
-        python en_game.py --word-size 5 --debug
-        python en_game.py --word-size 5
-        python en_game.py --test
-        python en_game.py --test --word POPE
-        python en_game.py --batch --word-size 5  --output-file batch_gemini_5.json
-        python en_game.py --batch --word POPE  --output-file batch_gemini_5.json
+        python game.py --language en --word-size 5
+        python game.py --language fr --word-size 5 --debug
+        python game.py --language en --test --word POPE
+        python game.py --language fr --test --word PAPE
+        python game.py --language en --batch --word-size 5 --output-file batch_en_5.json
+        python game.py --language fr --batch --word-size 5 --output-file batch_fr_5.json
+        python game.py --language en --batch --word POPE --output-file batch_en_pope.json
+        python game.py --language fr --batch --word PAPE --output-file batch_fr_pape.json
     """
-    # Create English game instance
-    game = VerbiageGame(language="en")
+    # Create game instance for the specified language
+    game = VerbiageGame(language=language)
 
     if word is not None:
         word_size = len(word)
@@ -60,7 +67,7 @@ def main(word, model, debug, word_size, test, batch, output_file, thinking_budge
         )
     elif batch:
         if output_file is None:
-            output_file = f"batch_{model}_{word_size}.json"
+            output_file = f"batch_{language}_{model}_{word_size}.json"
         game.generate_batch(
             word_size=word_size,
             model=model,
