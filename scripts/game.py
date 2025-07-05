@@ -61,7 +61,7 @@ def main():
 def play(language, word, model, debug, word_size, thinking_budget):
     """Play the word guessing game."""
     # Create game instance for the specified language
-    game = VerbiageGame(language=language)
+    game = VerbiageGame(language=language, debug=debug)
     print(debug)
 
     if word is not None:
@@ -69,7 +69,6 @@ def play(language, word, model, debug, word_size, thinking_budget):
 
     game.play(
         word_size=word_size,
-        debug=debug,
         word=word,
         model=model,
         thinking_budget=thinking_budget,
@@ -81,9 +80,9 @@ def play(language, word, model, debug, word_size, thinking_budget):
 def test(language, word, model, debug, thinking_budget, word_size):
     """Run tests on a series of words."""
     # Create game instance for the specified language
-    game = VerbiageGame(language=language)
+    game = VerbiageGame(language=language, debug=debug)
 
-    game.run_tests(model=model, debug=debug, word=word, thinking_budget=thinking_budget)
+    game.run_tests(model=model, word=word, thinking_budget=thinking_budget)
 
 
 @main.command()
@@ -91,14 +90,13 @@ def test(language, word, model, debug, thinking_budget, word_size):
 def daily_puzzle(language, word, model, debug, word_size, thinking_budget):
     """Automatically generate a daily word."""
     # Create game instance for the specified language
-    game = VerbiageGame(language=language)
+    game = VerbiageGame(language=language, debug=debug)
 
     if word is not None:
         word_size = len(word)
 
     game.play(
         word_size=word_size,
-        debug=debug,
         word=word,
         model=model,
         thinking_budget=thinking_budget,
@@ -115,7 +113,7 @@ def daily_puzzle(language, word, model, debug, word_size, thinking_budget):
 def batch(language, word, model, output_file, word_size, thinking_budget, debug):
     """Run all the playable words through the model."""
     # Create game instance for the specified language
-    game = VerbiageGame(language=language)
+    game = VerbiageGame(language=language, debug=debug)
 
     if word is not None:
         word_size = len(word)

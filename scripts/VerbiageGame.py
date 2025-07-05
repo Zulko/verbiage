@@ -242,7 +242,6 @@ class VerbiageGame:
     def play(
         self,
         word_size=5,
-        debug=False,
         word=None,
         model="gemini-2.5-flash",
         thinking_budget=None,
@@ -306,14 +305,12 @@ class VerbiageGame:
                 ),
                 temperature=0.2,
                 model=model,
-                debug=debug,
+                debug=self.debug,
                 thinking_budget=thinking_budget,
             )
             print(f"\n🗣️ {response}\n")
 
-    def run_tests(
-        self, model="gemini-2.5-flash", debug=False, word=None, thinking_budget=None
-    ):
+    def run_tests(self, model="gemini-2.5-flash", word=None, thinking_budget=None):
         """Run tests on a series of words."""
         test_words = json.loads((self.prompts_path / "test_words.json").read_text())
         client = self.get_client(model)
@@ -337,7 +334,7 @@ class VerbiageGame:
                     word_response_prompt.replace("{{player_word}}", guess_with_accents),
                     temperature=0.2,
                     model=model,
-                    debug=debug,
+                    debug=self.debug,
                     thinking_budget=thinking_budget,
                 )
                 print(response)
