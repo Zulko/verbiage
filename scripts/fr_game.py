@@ -154,7 +154,7 @@ def generate_batch(
         word: word_response_prompt.replace(
             "{{player_word}}", accented_dict.get(word, word)
         )
-        for word in words["playable"][:30]
+        for word in words["playable"]
     }
     results, _job = gemini_batch(
         prompts_by_word,

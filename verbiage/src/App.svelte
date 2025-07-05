@@ -313,7 +313,10 @@
     {#if gameState === "won"}
       <div class="clue-separator"></div>
       <div class="solution-container animate__animated animate__zoomIn">
-        <div class="solution"><b>THE WORD</b> is <b>{puzzle.solution}</b></div>
+        <div class="solution">
+          <b>{$_("solutionLabel")}</b>
+          {$_("solutionConnector")} <b>{puzzle.solution}</b>
+        </div>
         <VictorySection
           onShareGame={shareGame}
           guessCount={previousGuesses.length}

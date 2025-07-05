@@ -11,5 +11,7 @@
   "visitGithub": "Visit the project on GitHub",
   "shareTitle": "Verbiage - one word every Tuesday and Friday",
   "shareWinTitleGuesses": "I solved today's Verbiage in {time} with {count} guesses!",
-  "urlCopied": "Link copied to clipboard!"
+  "urlCopied": "Link copied to clipboard!",
+  "solutionLabel": "THE WORD",
+  "solutionConnector": "is"
 } 
