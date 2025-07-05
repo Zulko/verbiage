@@ -6,7 +6,14 @@
   let { text, listOfBoldWords = [] } = $props();
 
   let formattedText = $derived(
-    text.replace(listOfBoldWords, "<span class='the-word'>THE WORD</span>")
+    listOfBoldWords.reduce(
+      (acc, word) =>
+        acc.replace(
+          new RegExp(word, "g"),
+          `<span class='the-word'>${word}</span>`
+        ),
+      text
+    )
   );
 
   let typedElement;

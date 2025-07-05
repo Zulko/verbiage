@@ -11,6 +11,7 @@
   import WordInput from "./components/WordInput.svelte";
   import PuzzleCalendar from "./components/PuzzleCalendar.svelte";
   import puzzleCalendars from "./lib/puzzleCalendars.json";
+  import fr_accented_dict from "./lib/fr_accented_dict.json";
 
   // State to track when game is ending
   let gameEnding = $state(false);
@@ -270,7 +271,13 @@
         />
         {#each previousGuesses as guess}
           <div class="clue-separator"></div>
-          <Clue text={puzzle[guess]} {guess} />
+          <Clue
+            text={puzzle[guess]}
+            {guess}
+            listOfBoldWords={settings.lang === "en"
+              ? ["THE WORD", guess]
+              : ["MOT", fr_accented_dict[guess] || guess]}
+          />
         {/each}
       </section>
     {/if}
