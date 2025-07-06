@@ -2,7 +2,7 @@
 
 Verbiage is a word guessing game. When you guess the wrong word, you get a clue about how your guess relates to the secret word.
 
-<img src="verbiage/screenshot.jpeg" alt="Verbiage screenshot">
+<img src="verbiage/screenshot.png" alt="Verbiage screenshot"/>
 
 ## Repository
 
