@@ -1,5 +1,4 @@
 from pathlib import Path
-import requests
 from typing import Optional
 from pydantic import BaseModel
 from google import genai
@@ -120,8 +119,9 @@ class VerbiageGame:
             raise ValueError("Language must be 'en' or 'fr'")
 
         self.language = language
-        self.prompts_path = Path(__file__).parent / "instructions" / language
-        self.words_path = self.prompts_path / f"{language}_words.json"
+        dir = Path(__file__).parent
+        self.prompts_path = dir / "instructions" / language
+        self.words_path = dir / "word_lists" / language / f"{language}_words.json"
 
         # Load words data
         self.all_words = json.loads(self.words_path.read_text())
