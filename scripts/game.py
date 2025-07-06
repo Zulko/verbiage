@@ -119,9 +119,10 @@ def daily(language, word, model, debug, word_size, thinking_budget):
         max_words=10,
     )
     # Update puzzleCalendar.json
-    calendar_file = app_dir / "lib" / "puzzleCalendar.json"
+    calendar_file = app_dir / "lib" / "puzzleCalendars.json"
     calendar_data = json.load(calendar_file.read_text())
     calendar_data[language] = [today] + calendar_data[language]
+    calendar_file.write_text(json.dumps(calendar_data, indent=2))
 
 
 @main.command()

@@ -383,7 +383,7 @@ class VerbiageGame:
             word: word_response_prompt.replace(
                 "{{player_word}}", self.get_word_with_accents(word)
             )
-            for word in words["playable"]
+            for word in words_for_clues
         }
 
         results, _job = batch_function(
@@ -399,9 +399,10 @@ class VerbiageGame:
 
         if output_file is None:
             output_file = f"batch_{model}_{word_size}.json"
+        output_file = Path(output_file)
 
         print(f"Writing to file {output_file}")
-        if output_file.endswith(".json.gz"):
+        if output_file.name.endswith(".json.gz"):
             with gzip.open(output_file, "wt") as f:
                 json.dump(results, f)
         else:
