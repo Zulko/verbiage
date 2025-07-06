@@ -89,7 +89,7 @@
     }
   }
 
-  .victory h2 {
+  .victory h3 {
     color: #000000;
     margin-bottom: 0.5rem;
     font-size: 1.8rem;
@@ -167,14 +167,14 @@
       font-size: 2.5rem;
     }
 
-    .victory h2 {
+    .victory h3 {
       font-size: 1.6rem;
     }
   }
 
   /* Dark mode support */
   @media (prefers-color-scheme: dark) {
-    .victory h2 {
+    .victory h3 {
       color: #ffffff;
     }
 

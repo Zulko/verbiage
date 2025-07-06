@@ -100,10 +100,6 @@
     text-decoration-color: #3498db;
   }
 
-  .install-icon {
-    margin-left: 0.5rem;
-  }
-
   /* Dark mode support */
   @media (prefers-color-scheme: dark) {
     .install-app-btn {

@@ -74,7 +74,7 @@
           class:special={key === "Enter" || key === "Return"}
           class:disabled={isKeyDisabled(key)}
           disabled={isKeyDisabled(key)}
-          on:click={() => onKeyPress(key)}
+          onclick={() => onKeyPress(key)}
         >
           {key === "Return" ? "⌫" : key}
         </button>
