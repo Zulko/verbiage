@@ -23,7 +23,8 @@ def replace_accents(word):
     return word
 
 
-lexicon_path = Path(__file__).parent / "data" / "Lexique383.tsv"
+dir = Path(__file__).parent
+lexicon_path = dir / "data" / "Lexique383.tsv"
 download(
     url="http://www.lexique.org/databases/Lexique383/Lexique383.tsv",
     filename=lexicon_path,
@@ -74,9 +75,7 @@ def get_words(size):
 data = {n: get_words(n) for n in [4, 5, 6]}
 all_words = set(word for subdata in data.values() for word in subdata["drawable"])
 data["accented_dict"] = {k: v for k, v in accented_dict.items() if k in all_words}
-with open(Path(__file__).parent / "instructions" / "fr" / "fr_words.json", "w") as f:
+with open(dir / "fr" / "fr_words.json", "w") as f:
     json.dump(data, f, indent=2)
-with open(
-    Path(__file__).parent.parent / "verbiage" / "public" / "fr_accented_dict.json", "w"
-) as f:
+with open(dir.parent / "verbiage" / "public" / "fr_accented_dict.json", "w") as f:
     json.dump(accented_dict, f, indent=2)

@@ -30,7 +30,7 @@ wheels/
 .LSOverride
 
 # Data files
-data/*
-!data/.gitkeep
+word_lists/data/*
+!word_lists/data/.gitkeep
 
 .env

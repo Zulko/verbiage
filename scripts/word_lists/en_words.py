@@ -64,7 +64,7 @@ lexicon = pandas.read_csv(
 ).dropna(subset=["word"])
 nouns = lexicon[lexicon.word.isin(nouns_list)]
 
-with open(dir / "instructions" / "en" / "keep_and_avoid.yaml", "r") as f:
+with open(dir / "en" / "keep_and_avoid.yaml", "r") as f:
     keep_and_avoid = yaml.load(f, Loader=yaml.FullLoader)
 
 
@@ -84,5 +84,5 @@ def get_words(size):
 
 
 data = {n: get_words(n) for n in [4, 5, 6]}
-with open(Path(__file__).parent / "instructions" / "en" / "en_words.json", "w") as f:
+with open(dir / "en" / "en_words.json", "w") as f:
     json.dump(data, f, indent=2)

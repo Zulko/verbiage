@@ -3,6 +3,10 @@ from functools import wraps
 from dotenv import load_dotenv
 from VerbiageGame import VerbiageGame
 from gemini_batch import gemini_batch
+import json
+from datetime import datetime
+from pathlib import Path
+import gzip
 
 # Useful to attribute special keys to this project
 load_dotenv()
@@ -90,17 +94,33 @@ def test(language, word, model, debug, thinking_budget, word_size):
 def daily_puzzle(language, word, model, debug, word_size, thinking_budget):
     """Automatically generate a daily word."""
     # Create game instance for the specified language
+    today = datetime.now().strftime("%Y-%m-%d")
+    app_dir = Path(__file__).parent.parent / "verbiage"
+    puzzles_dir = app_dir / "public" / "puzzles"
+    output_file = puzzles_dir / language / f"{language}_{today}.json.gz"
     game = VerbiageGame(language=language, debug=debug)
 
     if word is not None:
         word_size = len(word)
 
-    game.play(
+    words_to_exclude = []
+    for gz_file in puzzles_dir.glob(f"{language}*.json.gz"):
+        with gzip.open(gz_file, "rt") as f:
+            words_to_exclude.extend(json.load(f)["solution"])
+
+    game.generate_batch(
         word_size=word_size,
-        word=word,
         model=model,
+        word=word,
+        output_file=output_file,
         thinking_budget=thinking_budget,
+        batch_function=gemini_batch,
+        words_to_exclude=words_to_exclude,
     )
+    # Update puzzleCalendar.json
+    calendar_file = app_dir / "lib" / "puzzleCalendar.json"
+    calendar_data = json.load(calendar_file.read_text())
+    calendar_data[language] = [today] + calendar_data[language]
 
 
 @main.command()
