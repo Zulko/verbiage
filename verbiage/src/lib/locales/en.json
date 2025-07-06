@@ -10,7 +10,7 @@
   "shareGameAction": "Share",
   "visitGithub": "Visit the project on GitHub",
   "shareTitle": "Verbiage - one word every Tuesday and Friday",
-  "shareWinTitleGuesses": "I solved today's Verbiage in {time} with {count} guesses!",
+  "shareWinTitleGuesses": "I solved today's Verbiage in {time} with {count} guess{plural}!",
   "urlCopied": "Link copied to clipboard!",
   "solutionLabel": "THE WORD",
   "solutionConnector": "is",
