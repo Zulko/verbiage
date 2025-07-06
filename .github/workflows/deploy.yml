@@ -35,9 +35,11 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
-          cache-dependency-path: "verbiage/package-lock.json"
+          cache-dependency-path: "verbiage/package.json"
       - name: Install dependencies
-        run: npm ci
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
         working-directory: ./verbiage
       - name: Build
         run: npm run build
