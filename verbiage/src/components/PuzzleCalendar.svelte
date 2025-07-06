@@ -56,7 +56,8 @@
     isOpen = !isOpen;
   }
 
-  function selectDate(date) {
+  function selectDate(date, event) {
+    event.stopPropagation();
     currentDate = date;
     isOpen = false;
   }
@@ -119,7 +120,7 @@
           <button
             class="dropdown-item"
             class:selected={date === currentDate}
-            onclick={() => selectDate(date)}
+            onclick={(event) => selectDate(date, event)}
             role="option"
             aria-selected={date === currentDate}
           >
