@@ -57,7 +57,7 @@ h1 {
 #app {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 3rem .5rem 0.5rem .5rem;
+  padding: 2rem 0rem 0.5rem 0rem;
   text-align: center;
   width: 100%;
   overflow-x: hidden;

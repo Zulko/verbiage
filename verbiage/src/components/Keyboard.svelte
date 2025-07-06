@@ -129,7 +129,7 @@
     background-color: #e2e8f0;
     color: #1a202c;
     font-weight: bold;
-    font-size: clamp(1.2rem, 4.5vw, 1.6rem);
+    font-size: clamp(1.4rem, 4vw, 1.6em);
     cursor: pointer;
     transition: all 0.2s;
     touch-action: manipulation;
@@ -145,7 +145,7 @@
 
   button.special {
     flex: 2.5;
-    font-size: clamp(1.1rem, 4vw, 1.4rem);
+    font-size: clamp(1.4rem, 4vw, 1.6rem);
     background-color: #cbd5e0;
   }
 
@@ -176,11 +176,11 @@
     button {
       height: 3rem;
       padding: 0 0.25rem;
-      font-size: clamp(1rem, 4vw, 1.3rem);
+      font-size: clamp(1.2rem, 4.5vw, 1.5rem);
     }
 
     button.special {
-      font-size: clamp(0.95rem, 3.5vw, 1.2rem);
+      font-size: clamp(1.1rem, 4vw, 1.4rem);
     }
   }
 
