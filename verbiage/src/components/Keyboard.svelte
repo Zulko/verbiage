@@ -94,6 +94,7 @@
     max-width: 1000px;
     margin: 1rem auto;
     align-items: center;
+    touch-action: manipulation;
   }
 
   .row {
@@ -131,6 +132,7 @@
     font-size: clamp(1.2rem, 4.5vw, 1.6rem);
     cursor: pointer;
     transition: all 0.2s;
+    touch-action: manipulation;
   }
 
   button:not(.disabled):hover {
