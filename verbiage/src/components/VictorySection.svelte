@@ -197,6 +197,21 @@
     text-align: left;
   }
 
+  .made-with a {
+    color: #0066cc;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .made-with a:hover {
+    color: #0052a3;
+    text-decoration: underline;
+  }
+
+  .made-with a:visited {
+    color: #551a8b;
+  }
+
   /* Responsive adjustments */
   @media (max-width: 480px) {
     .victory {
@@ -235,6 +250,19 @@
     }
     .github-icon {
       filter: brightness(0) invert(1);
+    }
+
+    .made-with a {
+      color: #66b3ff;
+    }
+
+    .made-with a:hover {
+      color: #99ccff;
+      text-decoration: underline;
+    }
+
+    .made-with a:visited {
+      color: #cc99ff;
     }
   }
 </style>
