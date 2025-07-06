@@ -308,7 +308,7 @@
             text={puzzle[guess]}
             listOfBoldWords={settings.lang === "en"
               ? ["THE WORD", guess]
-              : ["MOT", fr_accented_dict[guess] || guess]}
+              : [fr_accented_dict[guess] || guess, "LE MOT", "MOT"]}
           />
         {/each}
       </section>
