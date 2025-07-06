@@ -129,7 +129,7 @@
     background-color: #e2e8f0;
     color: #1a202c;
     font-weight: bold;
-    font-size: clamp(1.4rem, 4vw, 1.6em);
+    font-size: clamp(1.4rem, 4vw, 1.4em);
     cursor: pointer;
     transition: all 0.2s;
     touch-action: manipulation;
@@ -145,7 +145,7 @@
 
   button.special {
     flex: 2.5;
-    font-size: clamp(1.4rem, 4vw, 1.6rem);
+    font-size: clamp(1.3rem, 4vw, 1.3rem);
     background-color: #cbd5e0;
   }
 
