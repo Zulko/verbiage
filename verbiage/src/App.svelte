@@ -172,7 +172,16 @@
     let title = $_("shareTitle");
     if (gameState === "won") {
       title = $_("shareWinTitleGuesses", {
-        values: { time: elapsedTimeFormatted(), count: previousGuesses.length },
+        values: {
+          time: elapsedTimeFormatted(),
+          count: previousGuesses.length,
+          plural:
+            previousGuesses.length === 1
+              ? ""
+              : settings.lang === "fr"
+                ? "s"
+                : "es",
+        },
       });
     }
     // Check if Web Share API is supported and can share this data
