@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@formkit/auto-animate": "^0.8.2",
-    "@svelte-plugins/datepicker": "^1.0.11",
     "animate.css": "^4.1.1",
     "svelte-i18n": "^4.0.1",
     "typed.js": "^2.1.0"

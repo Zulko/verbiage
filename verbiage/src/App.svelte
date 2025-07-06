@@ -29,7 +29,7 @@
   let tStart = $state(null);
   let tEnd = $state(null);
   let errorMessage = $state("");
-  let showCalendar = $state(false);
+  let currentDate = $state("");
 
   function formatDate(dateStr, lang) {
     const [year, month, day] = dateStr.split("-").map((n) => parseInt(n, 10));
@@ -52,6 +52,7 @@
 
   $effect(() => {
     if (settings.lang && settings.date) {
+      currentDate = settings.date;
       loadPuzzle(settings);
       updateURL();
       tStart = Date.now();
@@ -59,6 +60,13 @@
       gameState = "playing";
       gameEnding = false;
       currentWord = "";
+    }
+  });
+
+  // Update settings when currentDate changes
+  $effect(() => {
+    if (currentDate && settings.lang) {
+      settings.date = currentDate;
     }
   });
 
@@ -74,10 +82,6 @@
       settings = { lang, date: langPuzzles[0] };
     }
     $locale = lang;
-  }
-
-  function toggleCalendar() {
-    showCalendar = !showCalendar;
   }
 
   // Component lifecycle
@@ -280,23 +284,10 @@
 
   {#if !$isLoading}
     <h1>Verbiage</h1>
-    <button
-      class="date"
-      onclick={toggleCalendar}
-      onkeydown={(e) =>
-        e.key === "Enter" || e.key === " " ? toggleCalendar() : null}
-      aria-label={$_("openCalendar") || "Open calendar"}
-      type="button"
-    >
-      {$_("datePreposition")}
-      {formattedDate}
-      <img src="/calendar-icon.svg" alt="calendar" class="calendar-icon" />
-    </button>
 
     <PuzzleCalendar
-      bind:isOpen={showCalendar}
+      bind:currentDate
       enabledDates={puzzleCalendar}
-      bind:date={settings.date}
       lang={settings.lang}
     />
 

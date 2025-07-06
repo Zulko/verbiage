@@ -32,17 +32,69 @@
     <button onclick={onShareGame} class="action-btn">
       {$_("shareGameAction")}
     </button>
-    <p class="github-link">
+    <PWAInstallButton />
+    <p class="made-with">
+      Made with ❤️ by <a
+        href="https://github.com/Zulko"
+        target="_blank"
+        rel="noopener noreferrer">Zulko</a
+      >
+      and
       <a
         href="https://github.com/Zulko/verbiage"
         target="_blank"
         rel="noopener noreferrer"
       >
-        {$_("visitGithub")}
-        <img src="/github-icon.svg" alt="GitHub" class="github-icon" />
-      </a>
+        hosted on
+        <img src="/github-icon.svg" alt="GitHub" class="github-icon" />GitHub</a
+      >. Built using
+      <a
+        href="https://deepmind.google/technologies/gemini/"
+        target="_blank"
+        rel="noopener noreferrer">Google Gemini</a
+      >,
+      <a
+        href="http://www.lexique.org/databases/Lexique383/"
+        target="_blank"
+        rel="noopener noreferrer">Lexique383</a
+      >,
+      <a
+        href="https://www.gutenberg.org/files/3203/files/mobypos.txt"
+        target="_blank"
+        rel="noopener noreferrer">mobypos</a
+      >,
+      <a
+        href="https://github.com/zaibacu/thesaurus"
+        target="_blank"
+        rel="noopener noreferrer">Zaibacus' thesaurus</a
+      >,
+      <a
+        href="https://norvig.com/ngrams/"
+        target="_blank"
+        rel="noopener noreferrer">Peter Norvig's frequency list</a
+      >,
+      <a
+        href="https://github.com/felixfischer/categorized-words"
+        target="_blank"
+        rel="noopener noreferrer">categorized-words</a
+      >,
+      <a href="https://svelte.dev" target="_blank" rel="noopener noreferrer"
+        >SvelteJS</a
+      >,
+      <a
+        href="https://mattboldt.com/demos/typed-js/"
+        target="_blank"
+        rel="noopener noreferrer">Typed-JS</a
+      >,
+      <a href="https://animate.style/" target="_blank" rel="noopener noreferrer"
+        >Animate.css</a
+      >,
+      <a
+        href="https://github.com/kaisermann/svelte-i18n"
+        target="_blank"
+        rel="noopener noreferrer">svelte-i18n</a
+      >.
     </p>
-    <PWAInstallButton />
   </div>
 </div>
 
@@ -130,31 +182,19 @@
     color: #ffffff;
   }
 
-  .github-link {
-    margin-top: 1rem;
-    margin-bottom: 0;
-    font-size: 0.875rem;
-    opacity: 0.7;
-  }
-
-  .github-link a {
-    color: #000000;
-    text-decoration: underline;
-    text-decoration-color: rgba(0, 0, 0, 0.3);
-    transition: all 0.25s ease;
-    font-weight: 400;
-  }
-
-  .github-link a:hover {
-    color: #000000;
-    text-decoration-color: #000000;
-    opacity: 1;
-  }
-
   .github-icon {
-    height: 1rem;
+    height: 0.6rem;
     width: auto;
     margin-left: 0.25rem;
+  }
+
+  .made-with {
+    margin-top: 1rem;
+    max-width: 380px;
+    margin-bottom: 0;
+    font-size: 0.65rem !important;
+    opacity: 0.8;
+    text-align: left;
   }
 
   /* Responsive adjustments */
@@ -193,18 +233,6 @@
       color: #000000;
       border-color: #ffffff;
     }
-
-    .github-link a {
-      color: #ffffff;
-      text-decoration-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .github-link a:hover {
-      color: #ffffff;
-      text-decoration-color: #ffffff;
-      opacity: 1;
-    }
-
     .github-icon {
       filter: brightness(0) invert(1);
     }
