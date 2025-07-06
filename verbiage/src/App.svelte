@@ -428,43 +428,6 @@
     margin-bottom: -0.3rem;
   }
 
-  .date {
-    font-size: 0.8rem;
-    color: #666;
-    text-align: center;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 0.25rem;
-    transition: background-color 0.2s ease;
-    background: none;
-    border: none;
-    font-family: inherit;
-  }
-
-  .date:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-  }
-
-  .date:focus {
-    outline: none;
-    background-color: rgba(0, 0, 0, 0.1);
-  }
-
-  .date:focus-visible {
-    outline: 2px solid #0087ff;
-    outline-offset: 2px;
-  }
-
-  .calendar-icon {
-    width: 1rem;
-    height: 1rem;
-  }
-
   .loading {
     display: flex;
     flex-direction: column;
@@ -492,24 +455,5 @@
 
   .clue-separator::before {
     content: "";
-  }
-
-  /* Dark mode support */
-  @media (prefers-color-scheme: dark) {
-    .date {
-      color: #ccc;
-    }
-
-    .date:hover {
-      background-color: rgba(255, 255, 255, 0.05);
-    }
-
-    .date:focus {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .calendar-icon {
-      filter: brightness(0) invert(1);
-    }
   }
 </style>
