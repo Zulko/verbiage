@@ -76,7 +76,7 @@
           disabled={isKeyDisabled(key)}
           onclick={() => onKeyPress(key)}
         >
-          {key === "Return" ? "⌫" : key}
+          {key === "Return" ? "⌫" : key === "Enter" ? "⏎" : key}
         </button>
       {/each}
     </div>
