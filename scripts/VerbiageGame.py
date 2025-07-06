@@ -347,6 +347,8 @@ class VerbiageGame:
         output_file=None,
         thinking_budget=None,
         batch_function=None,
+        max_words=None,
+        words_to_exclude=None,
     ):
         """Generate batch responses for all playable words."""
         if batch_function is None:
@@ -356,7 +358,10 @@ class VerbiageGame:
         words = self.all_words[str(word_size)]
 
         if word is None:
-            word = self.get_random_word(words)
+            list_of_words = words["drawable"]
+            if words_to_exclude is not None:
+                list_of_words = [w for w in list_of_words if w not in words_to_exclude]
+            word = choice(list_of_words)
 
         print("Generating words to avoid")
         word_with_accents = self.get_word_with_accents(word)
@@ -369,6 +374,10 @@ class VerbiageGame:
             avoid=", ".join(getattr(things_to_avoid, self.config["avoid_field"])),
             advice=getattr(things_to_avoid, self.config["advice_field"]),
         )
+
+        words_for_clues = words["playable"]
+        if max_words is not None:
+            words_for_clues = words_for_clues[:max_words]
 
         prompts_by_word = {
             word: word_response_prompt.replace(

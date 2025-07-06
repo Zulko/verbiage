@@ -91,7 +91,7 @@ def test(language, word, model, debug, thinking_budget, word_size):
 
 @main.command()
 @common_options
-def daily_puzzle(language, word, model, debug, word_size, thinking_budget):
+def daily(language, word, model, debug, word_size, thinking_budget):
     """Automatically generate a daily word."""
     # Create game instance for the specified language
     today = datetime.now().strftime("%Y-%m-%d")
@@ -116,6 +116,7 @@ def daily_puzzle(language, word, model, debug, word_size, thinking_budget):
         thinking_budget=thinking_budget,
         batch_function=gemini_batch,
         words_to_exclude=words_to_exclude,
+        max_words=10,
     )
     # Update puzzleCalendar.json
     calendar_file = app_dir / "lib" / "puzzleCalendar.json"
