@@ -95,6 +95,9 @@
   class="date-dropdown-container"
   bind:this={dropdownRef}
   onclick={toggleDropdown}
+  onkeydown={handleTriggerKeydown}
+  role="button"
+  tabindex="0"
 >
   <img src="/calendar-icon.svg" alt="calendar" class="calendar-icon" />
 
