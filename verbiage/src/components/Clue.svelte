@@ -98,9 +98,10 @@
     font-weight: 600;
   }
 
-  :global(.clue .guess),
-  :global(.clue-background .guess) {
-    color: #000000;
-    font-weight: 600;
+  @media (prefers-color-scheme: dark) {
+    :global(.clue .the-word),
+    :global(.clue-background .the-word) {
+      color: #ffffff;
+    }
   }
 </style>

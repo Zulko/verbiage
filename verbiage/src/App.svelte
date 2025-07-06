@@ -489,4 +489,23 @@
   .clue-separator::before {
     content: "";
   }
+
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    .date {
+      color: #ccc;
+    }
+
+    .date:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .date:focus {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .calendar-icon {
+      filter: brightness(0) invert(1);
+    }
+  }
 </style>

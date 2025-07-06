@@ -85,5 +85,10 @@
       opacity: 0.9;
       background: rgba(30, 30, 30, 0.8);
     }
+
+    .flag-btn.active {
+      background: rgba(30, 30, 30, 0.9);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
   }
 </style>

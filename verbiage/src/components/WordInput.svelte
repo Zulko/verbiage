@@ -90,4 +90,21 @@
       gap: 0.5rem;
     }
   }
+
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    .letter {
+      background: #2d3748;
+      color: #ffffff;
+      border-color: #4a5568;
+    }
+
+    .letter:not(.empty) {
+      border-color: #a0aec0;
+    }
+
+    .letter.pulse {
+      box-shadow: 0 0 4px rgba(160, 174, 192, 0.3);
+    }
+  }
 </style>

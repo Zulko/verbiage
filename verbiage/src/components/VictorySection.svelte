@@ -183,14 +183,14 @@
     }
 
     .action-btn {
-      background-color: #ffffff;
-      color: #000000;
+      background-color: #000000;
+      color: #ffffff;
       border: 1px solid #ffffff;
     }
 
     .action-btn:hover {
-      background-color: #000000;
-      color: #ffffff;
+      background-color: #ffffff;
+      color: #000000;
       border-color: #ffffff;
     }
 

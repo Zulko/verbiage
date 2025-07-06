@@ -181,4 +181,38 @@
       font-size: clamp(0.95rem, 3.5vw, 1.2rem);
     }
   }
+
+  @media (prefers-color-scheme: dark) {
+    button {
+      background-color: #374151;
+      color: #ffffff;
+    }
+
+    button:not(.disabled):hover {
+      background-color: #4b5563;
+    }
+
+    button:not(.disabled):active {
+      background-color: #6b7280;
+    }
+
+    button.special {
+      background-color: #4b5563;
+      color: #ffffff;
+    }
+
+    button.special:not(.disabled):hover {
+      background-color: #6b7280;
+    }
+
+    button.special:not(.disabled):active {
+      background-color: #9ca3af;
+    }
+
+    button.disabled {
+      background-color: #374151;
+      color: #9ca3af;
+      opacity: 0.5;
+    }
+  }
 </style>
