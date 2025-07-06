@@ -306,7 +306,6 @@
           <div class="clue-separator"></div>
           <Clue
             text={puzzle[guess]}
-            {guess}
             listOfBoldWords={settings.lang === "en"
               ? ["THE WORD", guess]
               : ["MOT", fr_accented_dict[guess] || guess]}

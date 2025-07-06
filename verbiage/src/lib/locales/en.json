@@ -13,5 +13,6 @@
   "shareWinTitleGuesses": "I solved today's Verbiage in {time} with {count} guesses!",
   "urlCopied": "Link copied to clipboard!",
   "solutionLabel": "THE WORD",
-  "solutionConnector": "is"
+  "solutionConnector": "is",
+  "installApp": "Install Verbiage as an app"
 } 
