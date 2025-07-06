@@ -206,6 +206,10 @@
 
   function onKeyPress(key) {
     // Clear any previous error message
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: "smooth",
+    });
     errorMessage = "";
 
     if (key === "Enter") {
@@ -250,7 +254,7 @@
               top: document.body.scrollHeight,
               behavior: "smooth",
             });
-          }, 220);
+          }, 250);
         } else {
           errorMessage = $_("onlyCommonNouns", {
             values: { currentWord },
