@@ -116,39 +116,38 @@
   async function loadPuzzle({ date, lang }) {
     const response = await fetch(`/puzzles/${lang}/${lang}_${date}.json.gz`);
 
-    // Check if response is gzipped by looking at headers or trying to parse as JSON
+    // Check if response is gzipped by looking at headers
     const contentEncoding = response.headers.get("content-encoding");
     const contentType = response.headers.get("content-type");
 
-    // If content-encoding indicates gzip, or if content-type suggests binary data
-    if (
-      contentEncoding === "gzip" ||
-      !contentType ||
-      !contentType.includes("application/json")
-    ) {
-      try {
-        // Try to decompress using DecompressionStream (modern browsers)
-        if (typeof DecompressionStream !== "undefined") {
+    // Try direct JSON parsing first (works for both auto-decompressed and plain JSON)
+    try {
+      puzzle = await response.json();
+      return;
+    } catch (error) {
+      // If direct JSON parsing fails, try manual decompression
+      if (typeof DecompressionStream !== "undefined") {
+        try {
+          // Reset response by fetching again since we consumed the body
+          const response2 = await fetch(
+            `/puzzles/${lang}/${lang}_${date}.json.gz`
+          );
           const stream = new DecompressionStream("gzip");
-          const decompressedStream = response.body.pipeThrough(stream);
+          const decompressedStream = response2.body.pipeThrough(stream);
           const decompressedResponse = new Response(decompressedStream);
           puzzle = await decompressedResponse.json();
-        } else {
-          // Fallback: try to parse as JSON directly (might work if server auto-decompresses)
-          puzzle = await response.json();
-        }
-      } catch (error) {
-        // If decompression fails, try parsing as JSON directly
-        try {
-          puzzle = await response.json();
-        } catch (jsonError) {
-          console.error("Failed to load puzzle:", error, jsonError);
-          throw new Error("Failed to load puzzle data");
+          return;
+        } catch (decompressionError) {
+          console.error(
+            "Failed to decompress and parse puzzle:",
+            decompressionError
+          );
         }
       }
-    } else {
-      // Response appears to be already decompressed JSON
-      puzzle = await response.json();
+
+      // If all attempts fail, throw error
+      console.error("Failed to load puzzle:", error);
+      throw new Error("Failed to load puzzle data");
     }
   }
 
