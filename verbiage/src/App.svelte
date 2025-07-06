@@ -114,8 +114,42 @@
   });
 
   async function loadPuzzle({ date, lang }) {
-    const puzzleData = await fetch(`/puzzles/${lang}/${lang}_${date}.json.gz`);
-    puzzle = await puzzleData.json();
+    const response = await fetch(`/puzzles/${lang}/${lang}_${date}.json.gz`);
+
+    // Check if response is gzipped by looking at headers or trying to parse as JSON
+    const contentEncoding = response.headers.get("content-encoding");
+    const contentType = response.headers.get("content-type");
+
+    // If content-encoding indicates gzip, or if content-type suggests binary data
+    if (
+      contentEncoding === "gzip" ||
+      !contentType ||
+      !contentType.includes("application/json")
+    ) {
+      try {
+        // Try to decompress using DecompressionStream (modern browsers)
+        if (typeof DecompressionStream !== "undefined") {
+          const stream = new DecompressionStream("gzip");
+          const decompressedStream = response.body.pipeThrough(stream);
+          const decompressedResponse = new Response(decompressedStream);
+          puzzle = await decompressedResponse.json();
+        } else {
+          // Fallback: try to parse as JSON directly (might work if server auto-decompresses)
+          puzzle = await response.json();
+        }
+      } catch (error) {
+        // If decompression fails, try parsing as JSON directly
+        try {
+          puzzle = await response.json();
+        } catch (jsonError) {
+          console.error("Failed to load puzzle:", error, jsonError);
+          throw new Error("Failed to load puzzle data");
+        }
+      }
+    } else {
+      // Response appears to be already decompressed JSON
+      puzzle = await response.json();
+    }
   }
 
   function updateURL() {
