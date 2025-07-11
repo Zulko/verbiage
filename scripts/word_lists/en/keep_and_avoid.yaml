@@ -5,6 +5,7 @@ keep_drawable:
   - CHIEF # Common word.
 keep_playable:
   - VISTA # Nice synonym for "view", "vision"
+  - ROUTE # Common word.
 avoid_drawable:
   - ASIDE # Mostly an adverb, not a noun.
   - CRAZY # Known more as an adjective.
