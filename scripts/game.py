@@ -65,17 +65,35 @@ def main():
 def play(language, word, model, debug, word_size, thinking_budget):
     """Play the word guessing game."""
     # Create game instance for the specified language
-    game = VerbiageGame(language=language, debug=debug)
-    print(debug)
 
     if word is not None:
         word_size = len(word)
 
+    game = VerbiageGame(language=language, debug=debug)
     game.play(
         word_size=word_size,
         word=word,
         model=model,
         thinking_budget=thinking_budget,
+    )
+
+
+@main.command()
+@common_options
+def self_play(language, word, model, debug, word_size, thinking_budget):
+    """Play the word guessing game."""
+    # Create game instance for the specified language
+
+    if word is not None:
+        word_size = len(word)
+
+    game = VerbiageGame(language=language, debug=debug)
+    game.play(
+        word_size=word_size,
+        word=word,
+        model=model,
+        thinking_budget=thinking_budget,
+        self_play=True,
     )
 
 

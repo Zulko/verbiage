@@ -202,6 +202,26 @@ class VerbiageGame:
 
         return MotsAEviter
 
+    def ai_play(self, clues, model, word_size, thinking_budget):
+        client = self.get_client(model)
+        clues = ". ".join(clues) if len(clues) > 0 else ""
+        prompt = (
+            f"You must guess THE WORD. "
+            f"THE WORD is a {word_size}-letter non-plural common noun. "
+            f"Here are clues on how THE WORD relates to other words, "
+            f" but the quality of these clues is not proven: {clues}. "
+            f"THE WORD is NOT one of these words!\n\n"
+            f"Important: your answer should be a single {word_size}-letter word, "
+            f"without formatting, for instance APPLE, DREAM, HORSE, etc."
+        )
+        return client(
+            prompt,
+            temperature=0.2,
+            model=model,
+            debug=self.debug,
+            thinking_budget=thinking_budget,
+        )
+
     def get_client(self, model):
         """Get the appropriate AI client based on the model."""
         return run_gemini if model.startswith("gemini") else run_openai
@@ -245,6 +265,7 @@ class VerbiageGame:
         word=None,
         model="gemini-2.5-flash",
         thinking_budget=None,
+        self_play=False,
     ):
         """Play the interactive word guessing game."""
         words = self.all_words[str(word_size)]
@@ -271,9 +292,14 @@ class VerbiageGame:
         )
 
         print(self.config["messages"]["lets_play"])
+        clues = []
 
         while True:
-            player_word = input(self.config["messages"]["input_prompt"])
+            if self_play:
+                player_word = self.ai_play(clues, model, word_size, thinking_budget)
+                print(f"🤖 {player_word}")
+            else:
+                player_word = input(self.config["messages"]["input_prompt"])
             if self.config["has_accents"]:
                 player_word = player_word.upper()
 
@@ -308,6 +334,7 @@ class VerbiageGame:
                 debug=self.debug,
                 thinking_budget=thinking_budget,
             )
+            clues.append(response)
             print(f"\n🗣️ {response}\n")
 
     def run_tests(self, model="gemini-2.5-flash", word=None, thinking_budget=None):

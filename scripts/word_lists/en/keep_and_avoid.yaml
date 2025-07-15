@@ -3,6 +3,7 @@ keep_drawable:
   - MEDAL # Common word.
   - SHACK # Common word.
   - CHIEF # Common word.
+  - RUMOR # Common word.
 keep_playable:
   - VISTA # Nice synonym for "view", "vision"
   - ROUTE # Common word.
