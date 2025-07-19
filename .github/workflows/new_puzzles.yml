@@ -32,6 +32,9 @@ jobs:
       - name: Run script (EN)
         run: |
           python scripts/game.py daily --language en
+
+      - name: Run script (FR)
+        run: |
           python scripts/game.py daily --language fr
 
       - name: Commit and push if there are changes
