@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from VerbiageGame import VerbiageGame
 from gemini_batch import gemini_batch
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import gzip
 
@@ -112,7 +112,7 @@ def test(language, word, model, debug, thinking_budget, word_size):
 def daily(language, word, model, debug, word_size, thinking_budget):
     """Automatically generate a daily word."""
     # Create game instance for the specified language
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     app_dir = Path(__file__).parent.parent / "verbiage"
     puzzles_dir = app_dir / "public" / "puzzles"
     output_file = puzzles_dir / language / f"{language}_{today}.json.gz"
