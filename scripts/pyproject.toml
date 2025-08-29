@@ -68,3 +68,18 @@ target-version = "py311"
 [tool.ruff.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
+
+[tool.setuptools]
+# Do not auto-discover packages in this flat layout; we'll list modules explicitly
+packages = []
+py-modules = ["game", "gemini_batch", "VerbiageGame"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+# Ensure these directories are not treated as Python packages
+exclude = ["instructions*", "word_lists*"]
+
+[tool.setuptools.data-files]
+# Install these directories as data (not importable packages)
+"verbiage_data/instructions" = ["instructions/**/*"]
+"verbiage_data/word_lists" = ["word_lists/**/*"]
