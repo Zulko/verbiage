@@ -75,9 +75,6 @@ packages = []
 py-modules = ["game", "gemini_batch", "VerbiageGame"]
 include-package-data = true
 
-[tool.setuptools.packages.find]
-# Ensure these directories are not treated as Python packages
-exclude = ["instructions*", "word_lists*"]
 
 [tool.setuptools.data-files]
 # Install these directories as data (not importable packages)
