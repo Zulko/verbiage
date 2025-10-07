@@ -78,5 +78,5 @@ include-package-data = true
 
 [tool.setuptools.data-files]
 # Install these directories as data (not importable packages)
-"verbiage_data/instructions" = ["instructions/**/*"]
-"verbiage_data/word_lists" = ["word_lists/**/*"]
+"verbiage_data/instructions" = ["instructions/**/*.md"]
+"verbiage_data/word_lists" = ["word_lists/**/*.json"]
