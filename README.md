@@ -16,14 +16,16 @@ This repository is organized in two folders:
 The scripts can be used as follows (see `-h` for options):
 
 ```bash
+cd scripts
+
 # Compile the list of english words (4, 5, 6 letters)
-python scripts/word_lists/en_words.py
+uv run word_lists/en_words.py
 
 # Play in the terminal
-python scripts/game.py play --language en --word-size 5
+uv run game.py play --language en --word-size 5
 
 # Run tests on predefined words
-python scripts/game.py test --language fr
+uv run game.py test --language fr
 ```
 
 ### Verbiage web app

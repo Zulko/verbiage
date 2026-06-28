@@ -4,15 +4,17 @@ version = "0.1.0"
 description = "A word game project"
 authors = [{ name = "Author Name", email = "author@example.com" }]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "google-generativeai",
+    "google-genai",
     "google-cloud-storage",
     "click",
     "pydantic",
     "pandas",
     "openai",
     "pyyaml",
+    "python-dotenv",
 ]
 
 [project.optional-dependencies]
