@@ -4,6 +4,10 @@ on:
   schedule:
     # Runs at 20:00 EST (01:00 UTC) on Tuesdays and Fridays
     - cron: "0 1 * * 2,5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   run-game-and-commit:
@@ -11,39 +15,44 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          persist-credentials: false # we will set up our own token
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: gen-lang-client-0608167298
-          service_account_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
-
       - name: Install dependencies
         run: |
           pip install scripts/
 
       - name: Run script (EN)
+        id: en
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python scripts/game.py daily --language en
 
       - name: Run script (FR)
+        id: fr
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python scripts/game.py daily --language fr
 
-      - name: Commit and push if there are changes
+      - name: Commit and push puzzle files
+        if: steps.en.outcome == 'success' || steps.fr.outcome == 'success'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add .
+          git add verbiage/public/puzzles verbiage/src/lib/puzzleCalendars.json
           git diff --cached --quiet || git commit -m "scheduled puzzle generation: $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push
-        env:
-          # Use GitHub token to push
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git push origin HEAD
+
+      - name: Fail if a language failed
+        if: steps.en.outcome != 'success' || steps.fr.outcome != 'success'
+        run: |
+          echo "English: ${{ steps.en.outcome }}"
+          echo "French: ${{ steps.fr.outcome }}"
+          exit 1

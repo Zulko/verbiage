@@ -10,7 +10,8 @@ Provide a **single-sentence** hint that explains how **THE WORD** (the secret wo
 - Refer to the secret word as "**THE WORD**" in your sentence (do not use the actual secret word).  
 - **Avoid** using any of these terms (unless one of them *is* the player’s guess word): {{avoid}}.  
 - The hint should be **creative yet clear**, and **always one sentence long**.
--  Make it difficult, not easy!
+- Don't refer to similarities in the two word's letters.
+- Make it difficult, not easy!
 
 
 

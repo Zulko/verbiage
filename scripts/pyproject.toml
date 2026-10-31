@@ -74,7 +74,7 @@ max-complexity = 10
 [tool.setuptools]
 # Do not auto-discover packages in this flat layout; we'll list modules explicitly
 packages = []
-py-modules = ["game", "gemini_batch", "VerbiageGame"]
+py-modules = ["game", "gemini_batch", "openai_batch", "VerbiageGame"]
 include-package-data = true
 
 

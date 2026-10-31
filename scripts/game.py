@@ -3,6 +3,7 @@ from functools import wraps
 from dotenv import load_dotenv
 from VerbiageGame import VerbiageGame
 from gemini_batch import gemini_batch
+from openai_batch import openai_batch
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -110,39 +111,63 @@ def test(language, word, model, debug, thinking_budget, word_size):
     game.run_tests(model=model, word=word, thinking_budget=thinking_budget)
 
 
+def _previous_solutions(puzzles_dir, language):
+    """Return secret words already used in this language's puzzles."""
+    solutions = []
+    for gz_file in sorted((puzzles_dir / language).glob(f"{language}_*.json.gz")):
+        with gzip.open(gz_file, "rt") as handle:
+            puzzle = json.load(handle)
+        solution = puzzle.get("solution")
+        if isinstance(solution, str) and solution:
+            solutions.append(solution)
+    return solutions
+
+
+def _record_calendar_date(calendar_file, language, today):
+    """Prepend today to the language calendar once."""
+    calendar_data = json.loads(calendar_file.read_text())
+    if today in calendar_data[language]:
+        return
+    calendar_data[language] = [today] + calendar_data[language]
+    calendar_file.write_text(json.dumps(calendar_data, indent=2) + "\n")
+
+
 @main.command()
 @common_options
 def daily(language, word, model, debug, word_size, thinking_budget):
-    """Automatically generate a daily word."""
-    # Create game instance for the specified language
+    """Generate today's puzzle with GPT-6.1 Terra through the OpenAI Batch API.
+
+    Writes verbiage/public/puzzles/<lang>/<lang>_<utc-date>.json.gz and
+    records that date in the puzzle calendar. Skips generation when today's
+    file is already there.
+    """
+    if model == "gemini-2.5-flash":
+        model = "gpt-6.1-terra"
+
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     app_dir = Path(__file__).parent.parent / "verbiage"
     puzzles_dir = app_dir / "public" / "puzzles"
     output_file = puzzles_dir / language / f"{language}_{today}.json.gz"
-    game = VerbiageGame(language=language, debug=debug)
 
-    if word is not None:
-        word_size = len(word)
+    if output_file.exists():
+        print(f"Puzzle already exists: {output_file}")
+    else:
+        if word is not None:
+            word_size = len(word)
 
-    words_to_exclude = []
-    for gz_file in puzzles_dir.glob(f"{language}*.json.gz"):
-        with gzip.open(gz_file, "rt") as f:
-            words_to_exclude.extend(json.load(f)["solution"])
+        VerbiageGame(language=language, debug=debug).generate_batch(
+            word_size=word_size,
+            model=model,
+            word=word,
+            output_file=output_file,
+            thinking_budget=thinking_budget,
+            batch_function=openai_batch,
+            words_to_exclude=_previous_solutions(puzzles_dir, language),
+        )
 
-    game.generate_batch(
-        word_size=word_size,
-        model=model,
-        word=word,
-        output_file=output_file,
-        thinking_budget=thinking_budget,
-        batch_function=gemini_batch,
-        words_to_exclude=words_to_exclude,
+    _record_calendar_date(
+        app_dir / "src" / "lib" / "puzzleCalendars.json", language, today
     )
-    # Update puzzleCalendar.json
-    calendar_file = app_dir / "src" / "lib" / "puzzleCalendars.json"
-    calendar_data = json.loads(calendar_file.read_text())
-    calendar_data[language] = [today] + calendar_data[language]
-    calendar_file.write_text(json.dumps(calendar_data, indent=2))
 
 
 @main.command()
