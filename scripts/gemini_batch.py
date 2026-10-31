@@ -23,6 +23,16 @@ def _create_batch_request(
     Returns:
         JSON string containing the formatted request for the batch API
     """
+    text = "" if thinking_budget is None else str(thinking_budget).strip().lower()
+    levels = {"minimal": "MINIMAL", "low": "LOW", "medium": "MEDIUM", "high": "HIGH"}
+    if text in levels:
+        thinking_config = {"thinkingLevel": levels[text]}
+    elif text == "none":
+        thinking_config = {"thinkingBudget": 0}
+    else:
+        thinking_config = {
+            "thinkingBudget": None if thinking_budget is None else int(text)
+        }
     return json.dumps(
         {
             "custom_id": prompt_id,
@@ -31,7 +41,7 @@ def _create_batch_request(
                 "generationConfig": {
                     "temperature": temperature,
                     "responseMimeType": "text/plain",
-                    "thinkingConfig": {"thinkingBudget": thinking_budget},
+                    "thinkingConfig": thinking_config,
                 },
             },
         }

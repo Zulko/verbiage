@@ -9,20 +9,149 @@ import gzip
 from random import choice
 
 
+# USD per 1M tokens at standard rates. Output tokens include reasoning tokens.
+MODEL_PRICES = {
+    "gpt-6.1-terra": {
+        "input": 1.0,
+        "cached": 0.05,
+        "cache_write": 1.25,
+        "output": 5.0,
+        "long_context_tokens": 272_000,
+        "long_context_input_multiplier": 2.0,
+        "long_context_output_multiplier": 1.5,
+    }
+}
+
+OPENAI_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max"}
+GEMINI_THINKING_LEVELS = {
+    "minimal": "MINIMAL",
+    "low": "LOW",
+    "medium": "MEDIUM",
+    "high": "HIGH",
+}
+
+
+def _usage_detail(details, name: str) -> int:
+    if details is None:
+        return 0
+    value = getattr(details, name, None)
+    if value is None:
+        extra = getattr(details, "model_extra", None) or {}
+        value = extra.get(name, 0)
+    return value or 0
+
+
+def _gemini_thinking_config(thinking_budget):
+    if thinking_budget is None or thinking_budget == "":
+        return None
+    text = str(thinking_budget).strip().lower()
+    if text in GEMINI_THINKING_LEVELS:
+        return genai.types.ThinkingConfig(thinking_level=GEMINI_THINKING_LEVELS[text])
+    if text == "none":
+        return genai.types.ThinkingConfig(thinking_budget=0)
+    return genai.types.ThinkingConfig(thinking_budget=int(text))
+
+
+def _append_gemini_usage(resp, usage_log):
+    if usage_log is None or resp.usage_metadata is None:
+        return
+    usage = resp.usage_metadata
+    thoughts = getattr(usage, "thoughts_token_count", 0) or 0
+    candidates = getattr(usage, "candidates_token_count", 0) or 0
+    usage_log.append(
+        {
+            "input": getattr(usage, "prompt_token_count", 0) or 0,
+            "cached": getattr(usage, "cached_content_token_count", 0) or 0,
+            "cache_write": 0,
+            "output": candidates + thoughts,
+            "reasoning": thoughts,
+        }
+    )
+
+
+def _append_openai_usage(completion, usage_log):
+    if usage_log is None or completion.usage is None:
+        return
+    usage = completion.usage
+    usage_log.append(
+        {
+            "input": usage.prompt_tokens or 0,
+            "cached": _usage_detail(usage.prompt_tokens_details, "cached_tokens"),
+            "cache_write": _usage_detail(
+                usage.prompt_tokens_details, "cache_write_tokens"
+            ),
+            "output": usage.completion_tokens or 0,
+            "reasoning": _usage_detail(
+                usage.completion_tokens_details, "reasoning_tokens"
+            ),
+        }
+    )
+
+
+def _call_cost(model: str, record: dict) -> float | None:
+    price = MODEL_PRICES.get(model)
+    if price is None:
+        return None
+    uncached = max(record["input"] - record["cached"] - record["cache_write"], 0)
+    input_multiplier = 1.0
+    output_multiplier = 1.0
+    if record["input"] > price["long_context_tokens"]:
+        input_multiplier = price["long_context_input_multiplier"]
+        output_multiplier = price["long_context_output_multiplier"]
+    return (
+        uncached * price["input"] * input_multiplier
+        + record["cached"] * price["cached"] * input_multiplier
+        + record["cache_write"] * price["cache_write"] * input_multiplier
+        + record["output"] * price["output"] * output_multiplier
+    ) / 1_000_000
+
+
+def print_usage_cost(model: str, usage_log: list[dict]):
+    """Print token totals and the estimated API cost for a finished test."""
+    if not usage_log:
+        return
+    totals = {
+        key: sum(record[key] for record in usage_log)
+        for key in ("input", "cached", "cache_write", "output", "reasoning")
+    }
+    input_parts = [f"{totals['input']:,} input"]
+    details = []
+    if totals["cached"]:
+        details.append(f"{totals['cached']:,} cached")
+    if totals["cache_write"]:
+        details.append(f"{totals['cache_write']:,} cache writes")
+    if details:
+        input_parts.append(f"({', '.join(details)})")
+    output = f"{totals['output']:,} output"
+    if totals["reasoning"]:
+        output += f" (including {totals['reasoning']:,} reasoning)"
+    print()
+    print(f"Tokens: {' '.join(input_parts)}, {output}")
+
+    costs = [_call_cost(model, record) for record in usage_log]
+    if any(cost is None for cost in costs):
+        print(f"No standard price is configured for {model}.")
+        return
+    amount = sum(costs)
+    shown = f"${amount:.4f}" if amount >= 0.01 else f"${amount:.6f}"
+    print(f"Estimated cost: {shown}")
+
+
 def run_gemini(
     prompt,
     model="gemini-2.5-flash",
     response_model: Optional[BaseModel] = None,
     temperature: float = 0.0,
     debug: bool = False,
-    thinking_budget: int = None,
+    thinking_budget=None,
+    usage_log=None,
 ) -> BaseModel | str:
     """Get a response from the Gemini API"""
     client = genai.Client()
     params = {"temperature": temperature}
-    if thinking_budget is not None:
-        tk_config = genai.types.ThinkingConfig(thinking_budget=thinking_budget)
-        params["thinking_config"] = tk_config
+    thinking_config = _gemini_thinking_config(thinking_budget)
+    if thinking_config is not None:
+        params["thinking_config"] = thinking_config
     if response_model is not None:
         config = genai.types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -34,6 +163,7 @@ def run_gemini(
             response_mime_type="text/plain", **params
         )
     resp = client.models.generate_content(model=model, contents=prompt, config=config)
+    _append_gemini_usage(resp, usage_log)
     usage = resp.usage_metadata
     if debug:
         print(
@@ -48,25 +178,53 @@ def run_gemini(
         return text
 
 
+def _openai_sampling_params(model: str, temperature: float | None) -> dict:
+    """Return sampling params the model accepts.
+
+    GPT-5, GPT-6, and o-series models reject any temperature other than the
+    default, so those requests omit the parameter.
+    """
+    if temperature is None:
+        return {}
+    name = model.lower()
+    if name.startswith(("o1", "o3", "o4", "gpt-5", "gpt-6")):
+        return {}
+    return {"temperature": temperature}
+
+
+def _openai_request_params(model: str, temperature, thinking_budget) -> dict:
+    params = _openai_sampling_params(model, temperature)
+    if thinking_budget is None:
+        return params
+    effort = str(thinking_budget).strip().lower()
+    name = model.lower()
+    if effort in OPENAI_EFFORTS and name.startswith(
+        ("o1", "o3", "o4", "gpt-5", "gpt-6")
+    ):
+        params["reasoning_effort"] = effort
+    return params
+
+
 def run_openai(
     prompt,
     model="gpt-4o-mini",
     response_model: Optional[BaseModel] = None,
     temperature: float = 0.0,
     debug: bool = False,
-    thinking_budget: int = None,
+    thinking_budget=None,
+    usage_log=None,
 ) -> BaseModel | str:
     """Get a response from the OpenAI API"""
     client = OpenAI()
 
     messages = [{"role": "user", "content": prompt}]
+    params = _openai_request_params(model, temperature, thinking_budget)
 
     if response_model is not None:
         # Use structured output with response_format
         completion = client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=temperature,
             response_format={
                 "type": "json_schema",
                 "json_schema": {
@@ -74,14 +232,16 @@ def run_openai(
                     "schema": response_model.model_json_schema(),
                 },
             },
+            **params,
         )
     else:
         # Standard text completion
         completion = client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=temperature,
+            **params,
         )
+    _append_openai_usage(completion, usage_log)
 
     if debug:
         usage = completion.usage
@@ -244,7 +404,9 @@ class VerbiageGame:
             return accented_dict.get(word, word)
         return word
 
-    def generate_things_to_avoid(self, word, model):
+    def generate_things_to_avoid(
+        self, word, model, thinking_budget=None, usage_log=None
+    ):
         """Generate things to avoid for the given word."""
         response_model = self.config["response_model_class"]
         things_to_avoid_prompt = format_template(
@@ -256,7 +418,8 @@ class VerbiageGame:
             response_model=response_model,
             temperature=0.4,
             model=model,
-            thinking_budget=None,
+            thinking_budget=thinking_budget,
+            usage_log=usage_log,
         )
 
     def play(
@@ -278,7 +441,9 @@ class VerbiageGame:
 
         print(self.config["messages"]["generating_advice"])
         word_with_accents = self.get_word_with_accents(word)
-        things_to_avoid = self.generate_things_to_avoid(word_with_accents, model)
+        things_to_avoid = self.generate_things_to_avoid(
+            word_with_accents, model, thinking_budget=thinking_budget
+        )
         self.debug_print(
             f"Things to avoid: {getattr(things_to_avoid, self.config['avoid_field'])}"
         )
@@ -337,34 +502,50 @@ class VerbiageGame:
             clues.append(response)
             print(f"\n🗣️ {response}\n")
 
-    def run_tests(self, model="gemini-2.5-flash", word=None, thinking_budget=None):
+    def run_tests(self, model="gemini-2.5-flash", word=None, thinking_budget="low"):
         """Run tests on a series of words."""
-        test_words = json.loads((self.prompts_path / "test_words.json").read_text())
+        test_words = json.loads(
+            (self.words_path.parent / "test_words.json").read_text()
+        )
         client = self.get_client(model)
+        usage_log = []
 
         if word is not None:
             test_words = {word: test_words[word]}
 
-        for word, guesses in test_words.items():
-            print(f"\n{self.config['messages']['test_word_prefix'].format(word)}")
-            word_with_accents = self.get_word_with_accents(word)
-            things_to_avoid = self.generate_things_to_avoid(word_with_accents, model)
-            word_response_prompt = format_template(
-                self.prompts_path / "word_response.md",
-                secret_word=word_with_accents,
-                avoid=", ".join(getattr(things_to_avoid, self.config["avoid_field"])),
-                advice=getattr(things_to_avoid, self.config["advice_field"]),
-            )
-            for guess in guesses:
-                guess_with_accents = self.get_word_with_accents(guess)
-                response = client(
-                    word_response_prompt.replace("{{player_word}}", guess_with_accents),
-                    temperature=0.2,
-                    model=model,
-                    debug=self.debug,
+        try:
+            for word, guesses in test_words.items():
+                print(f"\n{self.config['messages']['test_word_prefix'].format(word)}")
+                word_with_accents = self.get_word_with_accents(word)
+                things_to_avoid = self.generate_things_to_avoid(
+                    word_with_accents,
+                    model,
                     thinking_budget=thinking_budget,
+                    usage_log=usage_log,
                 )
-                print(response)
+                word_response_prompt = format_template(
+                    self.prompts_path / "word_response.md",
+                    secret_word=word_with_accents,
+                    avoid=", ".join(
+                        getattr(things_to_avoid, self.config["avoid_field"])
+                    ),
+                    advice=getattr(things_to_avoid, self.config["advice_field"]),
+                )
+                for guess in guesses:
+                    guess_with_accents = self.get_word_with_accents(guess)
+                    response = client(
+                        word_response_prompt.replace(
+                            "{{player_word}}", guess_with_accents
+                        ),
+                        temperature=0.2,
+                        model=model,
+                        debug=self.debug,
+                        thinking_budget=thinking_budget,
+                        usage_log=usage_log,
+                    )
+                    print(response)
+        finally:
+            print_usage_cost(model, usage_log)
 
     def generate_batch(
         self,
@@ -392,7 +573,9 @@ class VerbiageGame:
 
         print("Generating words to avoid")
         word_with_accents = self.get_word_with_accents(word)
-        things_to_avoid = self.generate_things_to_avoid(word_with_accents, model)
+        things_to_avoid = self.generate_things_to_avoid(
+            word_with_accents, model, thinking_budget=thinking_budget
+        )
 
         print("Generating word responses")
         word_response_prompt = format_template(

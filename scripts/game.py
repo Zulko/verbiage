@@ -29,8 +29,11 @@ def common_options(f):
     )
     @click.option(
         "--thinking-budget",
-        default=None,
-        help="Budget for thinking in tokens (default: None)",
+        default="low",
+        help=(
+            "Thinking effort (none, low, medium, high, xhigh, max) "
+            "or a Gemini token count (default: low)"
+        ),
     )
     @click.option(
         "--debug", is_flag=True, help="Enable debug mode to show the secret word"
