@@ -2,8 +2,8 @@ name: Create New Puzzles and Commit Changes
 
 on:
   schedule:
-    # Runs at 20:00 EST (01:00 UTC) on Tuesdays and Fridays
-    - cron: "0 1 * * 2,5"
+    # 01:00 UTC every day. daily skips a language whose puzzle file exists.
+    - cron: "0 1 * * *"
   workflow_dispatch:
 
 permissions:
