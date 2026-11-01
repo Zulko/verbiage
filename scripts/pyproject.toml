@@ -6,7 +6,6 @@ authors = [{ name = "Author Name", email = "author@example.com" }]
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "google-generativeai",
     "google-genai",
     "google-cloud-storage",
     "click",

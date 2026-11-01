@@ -46,7 +46,7 @@ scripts/
 ## Dependencies
 
 ### Core Dependencies
-- **google-generativeai**: For AI-powered word generation and game logic
+- **google-genai**: For AI-powered word generation and game logic
 - **click**: For command-line interface functionality
 
 ### Development Dependencies
