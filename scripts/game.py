@@ -3,7 +3,7 @@ from functools import wraps
 from dotenv import load_dotenv
 from VerbiageGame import VerbiageGame
 from gemini_batch import gemini_batch
-from openai_batch import openai_batch
+from openai_batch import fetch_completed_batch, openai_batch
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -195,6 +195,36 @@ def batch(language, word, model, output_file, word_size, thinking_budget, debug)
         output_file=output_file,
         thinking_budget=thinking_budget,
         batch_function=gemini_batch,
+    )
+
+
+@main.command()
+@click.option("--batch-id", required=True, help="Finished OpenAI batch id")
+@click.option(
+    "--language",
+    default="en",
+    type=click.Choice(["en", "fr"]),
+    help="Language for the puzzle (default: en)",
+)
+@click.option("--date", required=True, help="Puzzle date, YYYY-MM-DD")
+def recover(batch_id, language, date):
+    """Save a finished OpenAI batch as a daily puzzle."""
+    app_dir = Path(__file__).parent.parent / "verbiage"
+    puzzles_dir = app_dir / "public" / "puzzles"
+    output_file = puzzles_dir / language / f"{language}_{date}.json.gz"
+
+    if output_file.exists():
+        print(f"Puzzle already exists: {output_file}")
+    else:
+        results, solution = fetch_completed_batch(batch_id)
+        results["solution"] = solution
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        with gzip.open(output_file, "wt") as handle:
+            json.dump(results, handle)
+        print(f"Wrote {output_file} with {len(results) - 1} clues")
+
+    _record_calendar_date(
+        app_dir / "src" / "lib" / "puzzleCalendars.json", language, date
     )
 
 

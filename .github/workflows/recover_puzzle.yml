@@ -1,0 +1,64 @@
+name: Recover a finished puzzle batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch_id:
+        description: OpenAI batch id
+        required: true
+        type: string
+      language:
+        description: Puzzle language
+        required: true
+        type: choice
+        options:
+          - en
+          - fr
+      date:
+        description: Puzzle date (YYYY-MM-DD)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install scripts/
+
+      - name: Save batch as a puzzle
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python scripts/game.py recover \
+            --batch-id "${{ inputs.batch_id }}" \
+            --language "${{ inputs.language }}" \
+            --date "${{ inputs.date }}"
+
+      - name: Commit and push puzzle files
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add verbiage/public/puzzles verbiage/src/lib/puzzleCalendars.json
+          if git diff --cached --quiet; then
+            echo "No puzzle changes to commit"
+            exit 0
+          fi
+          if [ "${{ inputs.language }}" = "en" ]; then
+            label="English"
+          else
+            label="French"
+          fi
+          git commit -m "Add the ${label} puzzle for ${{ inputs.date }}."
+          git push origin HEAD

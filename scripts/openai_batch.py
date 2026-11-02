@@ -1,6 +1,7 @@
 """Submit clue prompts to the OpenAI Batch API."""
 
 import json
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -12,6 +13,7 @@ from VerbiageGame import _openai_request_params
 
 ENDPOINT = "/v1/chat/completions"
 TERMINAL_STATES = {"completed", "failed", "expired", "cancelled"}
+_SECRET_WORD = re.compile(r'\*\*Secret word:\*\* "([^"]+)"')
 
 
 def _request_line(custom_id: str, prompt: str, model: str, body_params: dict) -> str:
@@ -143,3 +145,56 @@ def openai_batch(
 
     print(f"Successfully processed {len(results)} results")
     return results, batch
+
+
+def fetch_completed_batch(batch_id: str) -> tuple[dict[str, str], str]:
+    """Download a finished batch. Returns clues and the secret word."""
+    client = OpenAI()
+    batch = client.batches.retrieve(batch_id)
+    if batch.status != "completed" or not batch.output_file_id:
+        detail = _batch_error_detail(client, batch)
+        raise RuntimeError(
+            f"Batch {batch.id} ended with status {batch.status}: {detail}"
+        )
+
+    input_ids = []
+    secrets = set()
+    input_text = client.files.content(batch.input_file_id).text
+    for line in input_text.splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        input_ids.append(row["custom_id"])
+        content = row["body"]["messages"][0]["content"]
+        match = _SECRET_WORD.search(content)
+        if match is None:
+            raise RuntimeError(f"{row['custom_id']} prompt has no secret word")
+        secrets.add(match.group(1))
+    if len(secrets) != 1:
+        raise RuntimeError(f"Batch {batch.id} prompts name {len(secrets)} secret words")
+
+    output = client.files.content(batch.output_file_id).text
+    results = {}
+    row_errors = []
+    for line in output.splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        try:
+            results[row["custom_id"]] = _response_text(row)
+        except RuntimeError as exc:
+            row_errors.append(str(exc))
+
+    missing = [word for word in input_ids if word not in results]
+    if missing or row_errors:
+        preview = ", ".join(missing[:5])
+        detail = _batch_error_detail(client, batch)
+        row_preview = "\n".join(row_errors[:5])
+        raise RuntimeError(
+            f"Batch {batch.id} missing {len(missing)} results, including {preview}\n"
+            f"{row_preview}\n{detail}"
+        )
+
+    solution = next(iter(secrets))
+    print(f"Batch {batch.id} has {len(results)} clues for {solution}")
+    return results, solution
