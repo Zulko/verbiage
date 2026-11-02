@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   recover:
@@ -63,3 +64,7 @@ jobs:
           fi
           git commit -m "Add the ${label} puzzle for ${{ inputs.date }}."
           git push origin HEAD
+          # A GITHUB_TOKEN push does not trigger the Pages workflow.
+          gh workflow run "Deploy static content to Pages" --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

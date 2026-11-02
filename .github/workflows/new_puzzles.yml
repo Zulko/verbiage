@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   run-game-and-commit:
@@ -47,8 +48,16 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add verbiage/public/puzzles verbiage/src/lib/puzzleCalendars.json
-          git diff --cached --quiet || git commit -m "scheduled puzzle generation: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          if git diff --cached --quiet; then
+            echo "No puzzle changes to commit"
+            exit 0
+          fi
+          git commit -m "scheduled puzzle generation: $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push origin HEAD
+          # A GITHUB_TOKEN push does not trigger the Pages workflow.
+          gh workflow run "Deploy static content to Pages" --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fail if a language failed
         if: steps.en.outcome != 'success' || steps.fr.outcome != 'success'
