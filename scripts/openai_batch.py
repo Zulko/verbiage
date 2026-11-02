@@ -151,7 +151,17 @@ def fetch_completed_batch(batch_id: str) -> tuple[dict[str, str], str]:
     """Download a finished batch. Returns clues and the secret word."""
     client = OpenAI()
     batch = client.batches.retrieve(batch_id)
+    print(
+        f"Batch {batch.id} status={batch.status} "
+        f"counts={batch.request_counts} output={batch.output_file_id}"
+    )
     if batch.status != "completed" or not batch.output_file_id:
+        recent = client.batches.list(limit=5)
+        for item in recent.data:
+            print(
+                f"recent {item.id} status={item.status} "
+                f"counts={item.request_counts} created={item.created_at}"
+            )
         detail = _batch_error_detail(client, batch)
         raise RuntimeError(
             f"Batch {batch.id} ended with status {batch.status}: {detail}"
