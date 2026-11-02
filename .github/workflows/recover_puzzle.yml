@@ -40,6 +40,7 @@ jobs:
       - name: Save batch as a puzzle
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PYTHONUNBUFFERED: "1"
         run: |
           python scripts/game.py recover \
             --batch-id "${{ inputs.batch_id }}" \

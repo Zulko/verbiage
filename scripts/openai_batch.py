@@ -155,6 +155,8 @@ def fetch_completed_batch(batch_id: str) -> tuple[dict[str, str], str]:
         f"Batch {batch.id} status={batch.status} "
         f"counts={batch.request_counts} output={batch.output_file_id}"
     )
+    if batch.status not in TERMINAL_STATES:
+        batch = _wait_for_batch(client, batch.id)
     if batch.status != "completed" or not batch.output_file_id:
         recent = client.batches.list(limit=5)
         for item in recent.data:
