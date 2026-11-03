@@ -129,12 +129,14 @@ def _previous_solutions(puzzles_dir, language):
     return solutions
 
 
-def _record_calendar_date(calendar_file, language, today):
-    """Prepend today to the language calendar once."""
+def _record_calendar_date(calendar_file, language, day):
+    """Insert a puzzle date into the language calendar, newest first."""
     calendar_data = json.loads(calendar_file.read_text())
-    if today in calendar_data[language]:
+    dates = calendar_data[language]
+    if day in dates:
         return
-    calendar_data[language] = [today] + calendar_data[language]
+    dates.append(day)
+    dates.sort(reverse=True)
     calendar_file.write_text(json.dumps(calendar_data, indent=2) + "\n")
 
 
@@ -145,17 +147,28 @@ def _record_calendar_date(calendar_file, language, today):
     is_flag=True,
     help="Send one prompt per semantic cluster instead of one per word",
 )
-def daily(language, word, model, debug, word_size, thinking_budget, by_cluster):
-    """Generate today's puzzle with GPT-6.1 Terra through the OpenAI Batch API.
+@click.option(
+    "--date",
+    default=None,
+    help="Puzzle date, YYYY-MM-DD (default: today, UTC)",
+)
+def daily(language, word, model, debug, word_size, thinking_budget, by_cluster, date):
+    """Generate a daily puzzle with GPT-6.1 Terra through the OpenAI Batch API.
 
-    Writes verbiage/public/puzzles/<lang>/<lang>_<utc-date>.json.gz and
-    records that date in the puzzle calendar. Skips generation when today's
-    file is already there.
+    Writes verbiage/public/puzzles/<lang>/<lang>_<date>.json.gz and
+    records that date in the puzzle calendar. Skips generation when that
+    file is already there. The date defaults to today in UTC.
     """
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if date is None:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    else:
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            raise click.BadParameter("use YYYY-MM-DD") from None
     app_dir = Path(__file__).parent.parent / "verbiage"
     puzzles_dir = app_dir / "public" / "puzzles"
-    output_file = puzzles_dir / language / f"{language}_{today}.json.gz"
+    output_file = puzzles_dir / language / f"{language}_{date}.json.gz"
 
     if output_file.exists():
         print(f"Puzzle already exists: {output_file}")
@@ -175,7 +188,7 @@ def daily(language, word, model, debug, word_size, thinking_budget, by_cluster):
         )
 
     _record_calendar_date(
-        app_dir / "src" / "lib" / "puzzleCalendars.json", language, today
+        app_dir / "src" / "lib" / "puzzleCalendars.json", language, date
     )
 
 
