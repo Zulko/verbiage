@@ -9,11 +9,17 @@ from typing import Dict
 
 from openai import OpenAI
 
-from VerbiageGame import _openai_request_params
+from VerbiageGame import (
+    VerbiageGame,
+    _openai_request_params,
+    parse_cluster_members_marker,
+    parse_secret_marker,
+)
 
 ENDPOINT = "/v1/chat/completions"
 TERMINAL_STATES = {"completed", "failed", "expired", "cancelled"}
 _SECRET_WORD = re.compile(r'\*\*Secret word:\*\* "([^"]+)"')
+_SECRET_WORD_FR = re.compile(r"\*\*Mot secret :\*\* «\s*([^»]+?)\s*»")
 
 
 def _request_line(custom_id: str, prompt: str, model: str, body_params: dict) -> str:
@@ -147,8 +153,25 @@ def openai_batch(
     return results, batch
 
 
-def fetch_completed_batch(batch_id: str) -> tuple[dict[str, str], str]:
-    """Download a finished batch. Returns clues and the secret word."""
+def _prompt_secret(content: str, custom_id: str) -> str:
+    """Read the secret word from a prompt, preferring the machine marker."""
+    marked = parse_secret_marker(content)
+    if marked:
+        return marked
+    match = _SECRET_WORD.search(content) or _SECRET_WORD_FR.search(content)
+    if match is None:
+        raise RuntimeError(f"{custom_id} prompt has no secret word")
+    return match.group(1).strip()
+
+
+def fetch_completed_batch(
+    batch_id: str, language: str = "en"
+) -> tuple[dict[str, str], str]:
+    """Download a finished batch. Returns clues and the secret word.
+
+    Cluster batches are detected from the machine-readable members marker in
+    each input prompt. Those responses are parsed into the flat puzzle schema.
+    """
     client = OpenAI()
     batch = client.batches.retrieve(batch_id)
     print(
@@ -171,33 +194,40 @@ def fetch_completed_batch(batch_id: str) -> tuple[dict[str, str], str]:
 
     input_ids = []
     secrets = set()
+    members_by_id = {}
     input_text = client.files.content(batch.input_file_id).text
     for line in input_text.splitlines():
         if not line.strip():
             continue
         row = json.loads(line)
-        input_ids.append(row["custom_id"])
+        custom_id = row["custom_id"]
+        input_ids.append(custom_id)
         content = row["body"]["messages"][0]["content"]
-        match = _SECRET_WORD.search(content)
-        if match is None:
-            raise RuntimeError(f"{row['custom_id']} prompt has no secret word")
-        secrets.add(match.group(1))
+        secrets.add(_prompt_secret(content, custom_id))
+        members = parse_cluster_members_marker(content)
+        if members is not None:
+            members_by_id[custom_id] = members
     if len(secrets) != 1:
         raise RuntimeError(f"Batch {batch.id} prompts name {len(secrets)} secret words")
+    if members_by_id and len(members_by_id) != len(input_ids):
+        raise RuntimeError(
+            f"Batch {batch.id} mixes clustered and per-word prompts "
+            f"({len(members_by_id)} clustered of {len(input_ids)})"
+        )
 
     output = client.files.content(batch.output_file_id).text
-    results = {}
+    raw_results = {}
     row_errors = []
     for line in output.splitlines():
         if not line.strip():
             continue
         row = json.loads(line)
         try:
-            results[row["custom_id"]] = _response_text(row)
+            raw_results[row["custom_id"]] = _response_text(row)
         except RuntimeError as exc:
             row_errors.append(str(exc))
 
-    missing = [word for word in input_ids if word not in results]
+    missing = [word for word in input_ids if word not in raw_results]
     if missing or row_errors:
         preview = ", ".join(missing[:5])
         detail = _batch_error_detail(client, batch)
@@ -208,5 +238,25 @@ def fetch_completed_batch(batch_id: str) -> tuple[dict[str, str], str]:
         )
 
     solution = next(iter(secrets))
-    print(f"Batch {batch.id} has {len(results)} clues for {solution}")
+    if not members_by_id:
+        print(f"Batch {batch.id} has {len(raw_results)} clues for {solution}")
+        return raw_results, solution
+
+    game = VerbiageGame(language=language)
+    results = {}
+    for custom_id, members in members_by_id.items():
+        parsed = game.parse_multi_clue_response(
+            raw_results[custom_id], members, context=custom_id
+        )
+        overlap = set(parsed) & set(results)
+        if overlap:
+            raise RuntimeError(
+                f"{custom_id} repeated already-parsed words: "
+                f"{', '.join(sorted(overlap)[:5])}"
+            )
+        results.update(parsed)
+    print(
+        f"Batch {batch.id} recovered {len(results)} clues "
+        f"from {len(members_by_id)} clusters for {solution}"
+    )
     return results, solution

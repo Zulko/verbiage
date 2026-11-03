@@ -4,9 +4,15 @@ from pydantic import BaseModel
 from google import genai
 from openai import OpenAI
 import json
+import re
 import time
 import gzip
+import unicodedata
 from random import choice
+
+SECRET_MARKER = re.compile(r"<<verbiage_secret:([^>]+)>>")
+CLUSTER_MEMBERS_MARKER = re.compile(r"<<verbiage_cluster_members:([^>]+)>>")
+CLUE_LINE = re.compile(r"^([^:\n]+):\s*(.*?)\s*$")
 
 
 # USD per 1M tokens at standard rates. Output tokens include reasoning tokens.
@@ -139,7 +145,7 @@ def print_usage_cost(model: str, usage_log: list[dict]):
 
 def run_gemini(
     prompt,
-    model="gemini-2.5-flash",
+    model="gpt-6.1-terra",
     response_model: Optional[BaseModel] = None,
     temperature: float = 0.0,
     debug: bool = False,
@@ -207,7 +213,7 @@ def _openai_request_params(model: str, temperature, thinking_budget) -> dict:
 
 def run_openai(
     prompt,
-    model="gpt-4o-mini",
+    model="gpt-6.1-terra",
     response_model: Optional[BaseModel] = None,
     temperature: float = 0.0,
     debug: bool = False,
@@ -261,6 +267,82 @@ def format_template(template_path: Path, **kwargs):
     for key, value in kwargs.items():
         template = template.replace(f"{{{{{key}}}}}", value)
     return template
+
+
+def strip_accents(text: str) -> str:
+    """Remove combining marks so accented French forms match playable keys."""
+    decomposed = unicodedata.normalize("NFD", text)
+    return "".join(char for char in decomposed if unicodedata.category(char) != "Mn")
+
+
+def parse_cluster_members_marker(prompt: str) -> list[str] | None:
+    """Return the machine-readable cluster member list from a batch prompt."""
+    match = CLUSTER_MEMBERS_MARKER.search(prompt)
+    if match is None:
+        return None
+    members = [part.strip() for part in match.group(1).split(",") if part.strip()]
+    return members or None
+
+
+def parse_secret_marker(prompt: str) -> str | None:
+    """Return the machine-readable secret word from a batch prompt."""
+    match = SECRET_MARKER.search(prompt)
+    return match.group(1).strip() if match else None
+
+
+def parse_multi_clue_response(
+    text: str,
+    expected_words: list[str],
+    *,
+    normalize_key,
+    context: str = "response",
+) -> dict[str, str]:
+    """Parse `WORD: SENTENCE` lines into a clue map for `expected_words`.
+
+    Raises ValueError when lines are missing, duplicated, unexpected, empty,
+    or when a clue spans more than one line.
+    """
+    expected = list(expected_words)
+    expected_set = set(expected)
+    if len(expected) != len(expected_set):
+        raise ValueError(f"{context}: expected words contain duplicates")
+
+    lines = [line.strip() for line in text.strip().splitlines() if line.strip()]
+    # Drop machine markers if the model echoes them.
+    lines = [
+        line
+        for line in lines
+        if not line.startswith("<<verbiage_") and not line.endswith(">>")
+    ]
+
+    clues = {}
+    for line in lines:
+        match = CLUE_LINE.match(line)
+        if match is None:
+            raise ValueError(f"{context}: unparseable line {line!r}")
+        raw_word, clue = match.group(1).strip(), match.group(2).strip()
+        if not clue:
+            raise ValueError(f"{context}: empty clue for {raw_word!r}")
+        if clue.count("\n"):
+            raise ValueError(f"{context}: multi-line clue for {raw_word!r}")
+        key = normalize_key(raw_word)
+        if key is None:
+            raise ValueError(f"{context}: unexpected word {raw_word!r}")
+        if key not in expected_set:
+            raise ValueError(f"{context}: unexpected word {key}")
+        if key in clues:
+            raise ValueError(f"{context}: duplicate word {key}")
+        clues[key] = clue
+
+    missing = [word for word in expected if word not in clues]
+    if missing:
+        preview = ", ".join(missing[:5])
+        raise ValueError(
+            f"{context}: missing {len(missing)} clues, including {preview}"
+        )
+    if len(clues) != len(expected):
+        raise ValueError(f"{context}: expected {len(expected)} clues, got {len(clues)}")
+    return {word: clues[word] for word in expected}
 
 
 class VerbiageGame:
@@ -404,6 +486,114 @@ class VerbiageGame:
             return accented_dict.get(word, word)
         return word
 
+    def _word_response_core(self, avoid: str) -> str:
+        """Shared clue rules used by single-word and multi-word prompts."""
+        return format_template(self.prompts_path / "word_response_core.md", avoid=avoid)
+
+    def format_word_response(self, secret_word: str, avoid: str, **extra) -> str:
+        """Fill the single-guess clue template, including the shared core."""
+        return format_template(
+            self.prompts_path / "word_response.md",
+            secret_word=secret_word,
+            avoid=avoid,
+            core=self._word_response_core(avoid),
+            **extra,
+        )
+
+    def normalize_guess_key(self, raw_word: str) -> str | None:
+        """Map a model-returned guess label onto a playable uppercase key."""
+        cleaned = raw_word.strip().strip("*`\"'«»")
+        if not cleaned:
+            return None
+        upper = cleaned.upper()
+        if self.config["has_accents"]:
+            plain = strip_accents(upper)
+            accented = self.get_accented_dict()
+            if plain in accented or plain in self._playable_lookup():
+                return plain
+            if upper in accented:
+                return upper
+            reverse = {value.upper(): key for key, value in accented.items()}
+            reverse.update(
+                {strip_accents(value.upper()): key for key, value in accented.items()}
+            )
+            return reverse.get(upper) or reverse.get(plain)
+        return upper
+
+    def _playable_lookup(self) -> set[str]:
+        words = set()
+        for size_data in self.all_words.values():
+            if isinstance(size_data, dict) and "playable" in size_data:
+                words.update(size_data["playable"])
+        return words
+
+    def load_clusters(self, word_size: int) -> list[list[str]]:
+        """Load the committed semantic clusters for this language and size."""
+        path = self.words_path.parent / "clusters.json"
+        if not path.exists():
+            raise FileNotFoundError(
+                f"No cluster map for {self.language} at {path}. "
+                "Generate and commit clusters.json first."
+            )
+        data = json.loads(path.read_text())
+        if data.get("language") != self.language:
+            raise RuntimeError(
+                f"{path} is for {data.get('language')}, not {self.language}"
+            )
+        if data.get("word_size") != word_size:
+            raise RuntimeError(
+                f"{path} covers size {data.get('word_size')}, not {word_size}"
+            )
+        clusters = data["clusters"]
+        playable = set(self.all_words[str(word_size)]["playable"])
+        found = [word for group in clusters for word in group]
+        if len(found) != len(set(found)):
+            raise RuntimeError(f"{path} has duplicate words")
+        if set(found) != playable:
+            missing = sorted(playable - set(found))
+            extra = sorted(set(found) - playable)
+            raise RuntimeError(
+                f"{path} does not match the playable list "
+                f"(missing {len(missing)}, extra {len(extra)})"
+            )
+        return clusters
+
+    def build_multi_clue_prompt(
+        self,
+        secret_word: str,
+        avoid: str,
+        player_words: list[str],
+        *,
+        secret_key: str | None = None,
+    ) -> str:
+        """Build one multi-guess clue prompt with recoverable metadata markers."""
+        if not player_words:
+            raise ValueError("player_words is empty")
+        labels = [self.get_word_with_accents(word) for word in player_words]
+        listed = "\n".join(f"- {label}" for label in labels)
+        key = secret_key if secret_key is not None else secret_word
+        return format_template(
+            self.prompts_path / "word_response_batch.md",
+            secret_word=secret_word,
+            secret_key=key,
+            avoid=avoid,
+            core=self._word_response_core(avoid),
+            player_words=listed,
+            word_count=str(len(player_words)),
+            cluster_members=",".join(player_words),
+        )
+
+    def parse_multi_clue_response(
+        self, text: str, expected_words: list[str], context: str = "response"
+    ) -> dict[str, str]:
+        """Parse and validate a multi-guess model response for this language."""
+        return parse_multi_clue_response(
+            text,
+            expected_words,
+            normalize_key=self.normalize_guess_key,
+            context=context,
+        )
+
     def generate_things_to_avoid(
         self, word, model, thinking_budget=None, usage_log=None
     ):
@@ -426,7 +616,7 @@ class VerbiageGame:
         self,
         word_size=5,
         word=None,
-        model="gemini-2.5-flash",
+        model="gpt-6.1-terra",
         thinking_budget=None,
         self_play=False,
     ):
@@ -449,11 +639,10 @@ class VerbiageGame:
         )
 
         client = self.get_client(model)
-        word_response_prompt = format_template(
-            self.prompts_path / "word_response.md",
+        avoid = ", ".join(getattr(things_to_avoid, self.config["avoid_field"]))
+        word_response_prompt = self.format_word_response(
             secret_word=word_with_accents,
-            avoid=", ".join(getattr(things_to_avoid, self.config["avoid_field"])),
-            advice=getattr(things_to_avoid, self.config["advice_field"]),
+            avoid=avoid,
         )
 
         print(self.config["messages"]["lets_play"])
@@ -502,16 +691,19 @@ class VerbiageGame:
             clues.append(response)
             print(f"\n🗣️ {response}\n")
 
-    def run_tests(self, model="gemini-2.5-flash", word=None, thinking_budget="low"):
-        """Run tests on a series of words."""
+    def _load_test_words(self, word=None):
         test_words = json.loads(
             (self.words_path.parent / "test_words.json").read_text()
         )
-        client = self.get_client(model)
-        usage_log = []
-
         if word is not None:
             test_words = {word: test_words[word]}
+        return test_words
+
+    def run_tests(self, model="gpt-6.1-terra", word=None, thinking_budget="low"):
+        """Run tests on a series of words."""
+        test_words = self._load_test_words(word)
+        client = self.get_client(model)
+        usage_log = []
 
         try:
             for word, guesses in test_words.items():
@@ -523,13 +715,10 @@ class VerbiageGame:
                     thinking_budget=thinking_budget,
                     usage_log=usage_log,
                 )
-                word_response_prompt = format_template(
-                    self.prompts_path / "word_response.md",
+                avoid = ", ".join(getattr(things_to_avoid, self.config["avoid_field"]))
+                word_response_prompt = self.format_word_response(
                     secret_word=word_with_accents,
-                    avoid=", ".join(
-                        getattr(things_to_avoid, self.config["avoid_field"])
-                    ),
-                    advice=getattr(things_to_avoid, self.config["advice_field"]),
+                    avoid=avoid,
                 )
                 for guess in guesses:
                     guess_with_accents = self.get_word_with_accents(guess)
@@ -547,16 +736,80 @@ class VerbiageGame:
         finally:
             print_usage_cost(model, usage_log)
 
+    def run_tests_batched(
+        self, model="gpt-6.1-terra", word=None, thinking_budget="low"
+    ):
+        """Run tests with one multi-clue prompt per secret, via the normal API."""
+        test_words = self._load_test_words(word)
+        client = self.get_client(model)
+        usage_log = []
+
+        try:
+            for word, guesses in test_words.items():
+                print(f"\n{self.config['messages']['test_word_prefix'].format(word)}")
+                word_with_accents = self.get_word_with_accents(word)
+                things_to_avoid = self.generate_things_to_avoid(
+                    word_with_accents,
+                    model,
+                    thinking_budget=thinking_budget,
+                    usage_log=usage_log,
+                )
+                avoid = ", ".join(getattr(things_to_avoid, self.config["avoid_field"]))
+                prompt = self.build_multi_clue_prompt(
+                    secret_word=word_with_accents,
+                    avoid=avoid,
+                    player_words=list(guesses),
+                    secret_key=word,
+                )
+                response = client(
+                    prompt,
+                    temperature=0.2,
+                    model=model,
+                    debug=self.debug,
+                    thinking_budget=thinking_budget,
+                    usage_log=usage_log,
+                )
+                clues = self.parse_multi_clue_response(
+                    response, list(guesses), context=f"test {word}"
+                )
+                for guess in guesses:
+                    print(f"{guess}: {clues[guess]}")
+        finally:
+            print_usage_cost(model, usage_log)
+
+    def _cluster_prompt_groups(
+        self, words_for_clues: list[str], word_size: int
+    ) -> list[tuple[str, list[str]]]:
+        """Build (prompt_id, members) groups for the selected playable words."""
+        selected = list(dict.fromkeys(words_for_clues))
+        selected_set = set(selected)
+        groups = []
+        covered = set()
+        for index, cluster in enumerate(self.load_clusters(word_size)):
+            members = [word for word in cluster if word in selected_set]
+            if not members:
+                continue
+            groups.append((f"cluster-{index:04d}", members))
+            covered.update(members)
+        missing = [word for word in selected if word not in covered]
+        if missing:
+            preview = ", ".join(missing[:5])
+            raise RuntimeError(
+                f"cluster map missed {len(missing)} selected words, including {preview}"
+            )
+        return groups
+
     def generate_batch(
         self,
         word_size=5,
-        model="gemini-2.5-flash",
+        model="gpt-6.1-terra",
         word=None,
         output_file=None,
         thinking_budget=None,
         batch_function=None,
         max_words=None,
         words_to_exclude=None,
+        by_cluster=False,
     ):
         """Generate batch responses for all playable words."""
         if batch_function is None:
@@ -576,28 +829,42 @@ class VerbiageGame:
         things_to_avoid = self.generate_things_to_avoid(
             word_with_accents, model, thinking_budget=thinking_budget
         )
+        avoid = ", ".join(getattr(things_to_avoid, self.config["avoid_field"]))
 
-        print("Generating word responses")
-        word_response_prompt = format_template(
-            self.prompts_path / "word_response.md",
-            secret_word=word_with_accents,
-            avoid=", ".join(getattr(things_to_avoid, self.config["avoid_field"])),
-            advice=getattr(things_to_avoid, self.config["advice_field"]),
-        )
-
-        words_for_clues = words["playable"]
+        words_for_clues = list(dict.fromkeys(words["playable"]))
         if max_words is not None:
             words_for_clues = words_for_clues[:max_words]
 
-        prompts_by_word = {
-            word: word_response_prompt.replace(
-                "{{player_word}}", self.get_word_with_accents(word)
+        if by_cluster:
+            print("Generating clustered word responses")
+            groups = self._cluster_prompt_groups(words_for_clues, word_size)
+            prompts = {
+                prompt_id: self.build_multi_clue_prompt(
+                    secret_word=word_with_accents,
+                    avoid=avoid,
+                    player_words=members,
+                    secret_key=word,
+                )
+                for prompt_id, members in groups
+            }
+            members_by_id = dict(groups)
+            print(f"Submitting {len(prompts)} cluster prompts")
+        else:
+            print("Generating word responses")
+            word_response_prompt = self.format_word_response(
+                secret_word=word_with_accents,
+                avoid=avoid,
             )
-            for word in words_for_clues
-        }
+            prompts = {
+                guess: word_response_prompt.replace(
+                    "{{player_word}}", self.get_word_with_accents(guess)
+                )
+                for guess in words_for_clues
+            }
+            members_by_id = None
 
-        results, _job = batch_function(
-            prompts_by_word,
+        raw_results, _job = batch_function(
+            prompts,
             model=model,
             temperature=0.2,
             gcs_bucket="verbiage-files",
@@ -605,6 +872,30 @@ class VerbiageGame:
             location="us-central1",
             thinking_budget=thinking_budget,
         )
+
+        if by_cluster:
+            results = {}
+            for prompt_id, members in members_by_id.items():
+                response = raw_results.get(prompt_id, "")
+                parsed = self.parse_multi_clue_response(
+                    response, members, context=prompt_id
+                )
+                overlap = set(parsed) & set(results)
+                if overlap:
+                    raise RuntimeError(
+                        f"{prompt_id} repeated already-parsed words: "
+                        f"{', '.join(sorted(overlap)[:5])}"
+                    )
+                results.update(parsed)
+            missing = [guess for guess in words_for_clues if guess not in results]
+            if missing:
+                preview = ", ".join(missing[:5])
+                raise RuntimeError(
+                    f"cluster batch missing {len(missing)} clues, including {preview}"
+                )
+        else:
+            results = raw_results
+
         results["solution"] = word
 
         if output_file is None:

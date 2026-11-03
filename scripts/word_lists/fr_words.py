@@ -1,4 +1,4 @@
-from utils import download
+from utils import download, embed_words, embeddings_path, playable_words
 from pathlib import Path
 import pandas
 import json
@@ -77,5 +77,11 @@ all_words = set(word for subdata in data.values() for word in subdata["drawable"
 data["accented_dict"] = {k: v for k, v in accented_dict.items() if k in all_words}
 with open(dir / "fr" / "fr_words.json", "w") as f:
     json.dump(data, f, indent=2)
+words = playable_words(data)
+embed_words(
+    words,
+    embeddings_path("fr"),
+    texts=[accented_dict.get(word, word) for word in words],
+)
 with open(dir.parent / "verbiage" / "public" / "fr_accented_dict.json", "w") as f:
     json.dump(accented_dict, f, indent=2)

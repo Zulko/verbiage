@@ -25,8 +25,8 @@ def common_options(f):
     @click.option("--word", help="Force a specific word for the game")
     @click.option(
         "--model",
-        default="gemini-2.5-flash",
-        help="AI model to use (default: gemini-2.5-flash)",
+        default="gpt-6.1-terra",
+        help="AI model to use (default: gpt-6.1-terra)",
     )
     @click.option(
         "--thinking-budget",
@@ -103,12 +103,18 @@ def self_play(language, word, model, debug, word_size, thinking_budget):
 
 @main.command()
 @common_options
-def test(language, word, model, debug, thinking_budget, word_size):
+@click.option(
+    "--batched",
+    is_flag=True,
+    help="Send one multi-clue prompt per secret test word through the normal API",
+)
+def test(language, word, model, debug, thinking_budget, word_size, batched):
     """Run tests on a series of words."""
     # Create game instance for the specified language
     game = VerbiageGame(language=language, debug=debug)
 
-    game.run_tests(model=model, word=word, thinking_budget=thinking_budget)
+    runner = game.run_tests_batched if batched else game.run_tests
+    runner(model=model, word=word, thinking_budget=thinking_budget)
 
 
 def _previous_solutions(puzzles_dir, language):
@@ -134,16 +140,18 @@ def _record_calendar_date(calendar_file, language, today):
 
 @main.command()
 @common_options
-def daily(language, word, model, debug, word_size, thinking_budget):
+@click.option(
+    "--by-cluster",
+    is_flag=True,
+    help="Send one prompt per semantic cluster instead of one per word",
+)
+def daily(language, word, model, debug, word_size, thinking_budget, by_cluster):
     """Generate today's puzzle with GPT-6.1 Terra through the OpenAI Batch API.
 
     Writes verbiage/public/puzzles/<lang>/<lang>_<utc-date>.json.gz and
     records that date in the puzzle calendar. Skips generation when today's
     file is already there.
     """
-    if model == "gemini-2.5-flash":
-        model = "gpt-6.1-terra"
-
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     app_dir = Path(__file__).parent.parent / "verbiage"
     puzzles_dir = app_dir / "public" / "puzzles"
@@ -163,6 +171,7 @@ def daily(language, word, model, debug, word_size, thinking_budget):
             thinking_budget=thinking_budget,
             batch_function=openai_batch,
             words_to_exclude=_previous_solutions(puzzles_dir, language),
+            by_cluster=by_cluster,
         )
 
     _record_calendar_date(
@@ -177,7 +186,14 @@ def daily(language, word, model, debug, word_size, thinking_budget):
     default=None,
     help="Path to the output file for batch generation",
 )
-def batch(language, word, model, output_file, word_size, thinking_budget, debug):
+@click.option(
+    "--by-cluster",
+    is_flag=True,
+    help="Send one prompt per semantic cluster instead of one per word",
+)
+def batch(
+    language, word, model, output_file, word_size, thinking_budget, debug, by_cluster
+):
     """Run all the playable words through the model."""
     # Create game instance for the specified language
     game = VerbiageGame(language=language, debug=debug)
@@ -188,13 +204,15 @@ def batch(language, word, model, output_file, word_size, thinking_budget, debug)
     if output_file is None:
         output_file = f"batch_{language}_{model}_{word_size}.json"
 
+    batch_function = gemini_batch if model.startswith("gemini") else openai_batch
     game.generate_batch(
         word_size=word_size,
         model=model,
         word=word,
         output_file=output_file,
         thinking_budget=thinking_budget,
-        batch_function=gemini_batch,
+        batch_function=batch_function,
+        by_cluster=by_cluster,
     )
 
 
@@ -216,7 +234,7 @@ def recover(batch_id, language, date):
     if output_file.exists():
         print(f"Puzzle already exists: {output_file}")
     else:
-        results, solution = fetch_completed_batch(batch_id)
+        results, solution = fetch_completed_batch(batch_id, language=language)
         results["solution"] = solution
         output_file.parent.mkdir(parents=True, exist_ok=True)
         with gzip.open(output_file, "wt") as handle:

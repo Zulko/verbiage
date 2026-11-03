@@ -10,6 +10,7 @@ dependencies = [
     "google-cloud-storage",
     "click",
     "pydantic",
+    "numpy",
     "pandas",
     "openai",
     "pyyaml",
