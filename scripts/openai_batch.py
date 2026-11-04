@@ -10,10 +10,13 @@ from typing import Dict
 from openai import OpenAI
 
 from VerbiageGame import (
+    BATCH_PRICE_RATE,
     VerbiageGame,
     _openai_request_params,
+    parse_avoid_list,
     parse_cluster_members_marker,
     parse_secret_marker,
+    usage_record_from_openai_usage,
 )
 
 ENDPOINT = "/v1/chat/completions"
@@ -72,6 +75,17 @@ def _batch_error_detail(client: OpenAI, batch) -> str:
     return "\n".join(parts) if parts else "no error details"
 
 
+def batch_usage_record(row: dict) -> dict | None:
+    """Read token usage from a batch output row, priced at the batch rate."""
+    body = (row.get("response") or {}).get("body") or {}
+    usage = body.get("usage")
+    if not isinstance(usage, dict):
+        return None
+    record = usage_record_from_openai_usage(usage)
+    record["rate"] = BATCH_PRICE_RATE
+    return record
+
+
 def _response_text(row: dict) -> str:
     custom_id = row.get("custom_id", "?")
     if row.get("error"):
@@ -88,9 +102,14 @@ def openai_batch(
     model: str = "gpt-6.1-terra",
     temperature: float = 0.2,
     thinking_budget: str = "low",
+    wait: bool = True,
     **_unused,
-) -> tuple[dict[str, str], object]:
-    """Run prompts through the OpenAI Batch API and return {id: text}."""
+) -> tuple[dict[str, str], object] | tuple[dict[str, str], object, list[dict]]:
+    """Run prompts through the OpenAI Batch API.
+
+    When wait is false, return as soon as the batch id exists. The result
+    map is empty and there is no usage log yet.
+    """
     if not prompts:
         raise ValueError("prompts is empty")
 
@@ -120,6 +139,8 @@ def openai_batch(
         completion_window="24h",
     )
     print(f"Batch created: {batch.id}")
+    if not wait:
+        return {}, batch
     batch = _wait_for_batch(client, batch.id)
     if batch.status != "completed" or not batch.output_file_id:
         detail = _batch_error_detail(client, batch)
@@ -129,6 +150,8 @@ def openai_batch(
 
     output = client.files.content(batch.output_file_id).text
     results = {}
+    usage_records = []
+    missing_usage = 0
     row_errors = []
     for line in output.splitlines():
         if not line.strip():
@@ -136,6 +159,11 @@ def openai_batch(
         row = json.loads(line)
         try:
             results[row["custom_id"]] = _response_text(row)
+            record = batch_usage_record(row)
+            if record is None:
+                missing_usage += 1
+            else:
+                usage_records.append(record)
         except RuntimeError as exc:
             row_errors.append(str(exc))
 
@@ -150,7 +178,12 @@ def openai_batch(
         )
 
     print(f"Successfully processed {len(results)} results")
-    return results, batch
+    if missing_usage:
+        print(
+            f"{missing_usage} batch results included no token usage, "
+            "so the estimated cost is incomplete."
+        )
+    return results, batch, usage_records
 
 
 def _prompt_secret(content: str, custom_id: str) -> str:
@@ -260,3 +293,134 @@ def fetch_completed_batch(
         f"from {len(members_by_id)} clusters for {solution}"
     )
     return results, solution
+
+
+def process_completed_batch(
+    batch_id: str,
+    language: str = "en",
+    model: str = "gpt-6.1-terra",
+    thinking_budget: str = "low",
+    debug: bool = False,
+) -> tuple[dict[str, str], str, list[dict]]:
+    """Download a finished batch, fill missing clues live, and return usage.
+
+    The returned usage log prices batch rows at the batch rate and any
+    follow-up calls at the standard rate. The caller prints that cost.
+    """
+    client = OpenAI()
+    batch = client.batches.retrieve(batch_id)
+    print(
+        f"Batch {batch.id} status={batch.status} "
+        f"counts={batch.request_counts} output={batch.output_file_id}"
+    )
+    if batch.status not in TERMINAL_STATES:
+        batch = _wait_for_batch(client, batch.id)
+    if batch.status != "completed" or not batch.output_file_id:
+        detail = _batch_error_detail(client, batch)
+        raise RuntimeError(
+            f"Batch {batch.id} ended with status {batch.status}: {detail}"
+        )
+
+    input_ids = []
+    prompts = {}
+    secrets = set()
+    secret_word = None
+    members_by_id = {}
+    input_text = client.files.content(batch.input_file_id).text
+    for line in input_text.splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        custom_id = row["custom_id"]
+        content = row["body"]["messages"][0]["content"]
+        input_ids.append(custom_id)
+        prompts[custom_id] = content
+        secrets.add(_prompt_secret(content, custom_id))
+        if secret_word is None:
+            display = _SECRET_WORD.search(content) or _SECRET_WORD_FR.search(content)
+            secret_word = display.group(1).strip() if display else None
+        members = parse_cluster_members_marker(content)
+        if members is not None:
+            members_by_id[custom_id] = members
+    if len(secrets) != 1:
+        raise RuntimeError(f"Batch {batch.id} prompts name {len(secrets)} secret words")
+    if members_by_id and len(members_by_id) != len(input_ids):
+        raise RuntimeError(
+            f"Batch {batch.id} mixes clustered and per-word prompts "
+            f"({len(members_by_id)} clustered of {len(input_ids)})"
+        )
+    solution = next(iter(secrets))
+    if secret_word is None:
+        secret_word = solution
+
+    output = client.files.content(batch.output_file_id).text
+    raw_results = {}
+    usage_log = []
+    missing_usage = 0
+    for line in output.splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        try:
+            raw_results[row["custom_id"]] = _response_text(row)
+        except RuntimeError as exc:
+            print(exc)
+            continue
+        record = batch_usage_record(row)
+        if record is None:
+            missing_usage += 1
+            continue
+        usage_log.append(record)
+    if missing_usage:
+        print(
+            f"{missing_usage} batch results included no token usage, "
+            "so the estimated cost is incomplete."
+        )
+
+    game = VerbiageGame(language=language, debug=debug)
+    if not members_by_id:
+        missing = [
+            word for word in input_ids if not str(raw_results.get(word, "")).strip()
+        ]
+        results = {word: raw_results[word] for word in input_ids if word not in missing}
+        if missing:
+            avoid = _avoid_from_prompts(prompts)
+            filled = game.complete_cluster_results(
+                {},
+                {"follow-up": missing},
+                secret_word=secret_word,
+                avoid=avoid,
+                secret_key=solution,
+                model=model,
+                thinking_budget=thinking_budget,
+                usage_log=usage_log,
+            )
+            results.update(filled)
+        print(f"Batch {batch.id} has {len(results)} clues for {solution}")
+        return results, solution, usage_log
+
+    avoid = _avoid_from_prompts(prompts)
+    results = game.complete_cluster_results(
+        raw_results,
+        members_by_id,
+        secret_word=secret_word,
+        avoid=avoid,
+        secret_key=solution,
+        model=model,
+        thinking_budget=thinking_budget,
+        usage_log=usage_log,
+    )
+    print(
+        f"Batch {batch.id} has {len(results)} clues "
+        f"from {len(members_by_id)} clusters for {solution}"
+    )
+    return results, solution, usage_log
+
+
+def _avoid_from_prompts(prompts: dict[str, str]) -> str | None:
+    """Read the shared avoid list from the prompts that were submitted."""
+    for content in prompts.values():
+        avoid = parse_avoid_list(content)
+        if avoid:
+            return avoid
+    return None

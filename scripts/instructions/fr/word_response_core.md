@@ -5,7 +5,8 @@ Donne un **indice d’une seule phrase** qui explique comment **LE MOT** (le mot
 - Réfère-toi au mot secret par « **LE MOT** » dans ta phrase (n’utilise pas le vrai mot secret).
 - **Évite** d’utiliser des mots trop souvent associés au mot secret (sauf si l’un d’eux est la proposition du joueur), en particulier ces mots: {{avoid}}.
 - L’indice doit être **créatif mais clair**, et **toujours d’une seule phrase**.
-- L'indice doit être difficile plutot que facile, et ne doit pas faire référence aux lettres du mot.
+- L'indice doit être difficile. Idéalement, il faudra au joueur d'autres indices pour deviner le mot.
+- L'indice ne doit pas faire référence aux lettres du mot.
 
 
 
@@ -16,3 +17,4 @@ Donne un **indice d’une seule phrase** qui explique comment **LE MOT** (le mot
 - **Mot secret :** PRISME ; **Proposition :** COULEUR → *« Beaucoup de COULEURs peuvent sortir du MOT. »*
 - **Mot secret :** ACTEUR ; **Proposition :** HISTOIRE → *« LE MOT donne vie à une HISTOIRE. »*
 - **Mot secret :** SUCRE ; **Proposition :** LASER → *« LE MOT et un LASER peuvent tous deux apporter de la chaleur et de l’énergie ! »*
+

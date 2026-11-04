@@ -13,9 +13,14 @@ from random import choice
 SECRET_MARKER = re.compile(r"<<verbiage_secret:([^>]+)>>")
 CLUSTER_MEMBERS_MARKER = re.compile(r"<<verbiage_cluster_members:([^>]+)>>")
 CLUE_LINE = re.compile(r"^([^:\n]+):\s*(.*?)\s*$")
+AVOID_LIST = re.compile(
+    r"(?:player['\u2019]s guess word\)|en particulier ces mots): ([^.]+)\."
+)
 
 
 # USD per 1M tokens at standard rates. Output tokens include reasoning tokens.
+# The OpenAI Batch API bills half of these rates.
+BATCH_PRICE_RATE = 0.5
 MODEL_PRICES = {
     "gpt-6.1-terra": {
         "input": 1.0,
@@ -45,6 +50,19 @@ def _usage_detail(details, name: str) -> int:
         extra = getattr(details, "model_extra", None) or {}
         value = extra.get(name, 0)
     return value or 0
+
+
+def usage_record_from_openai_usage(usage: dict) -> dict:
+    """Turn a chat-completion usage object into the cost record."""
+    prompt_details = usage.get("prompt_tokens_details") or {}
+    completion_details = usage.get("completion_tokens_details") or {}
+    return {
+        "input": usage.get("prompt_tokens") or 0,
+        "cached": prompt_details.get("cached_tokens") or 0,
+        "cache_write": prompt_details.get("cache_write_tokens") or 0,
+        "output": usage.get("completion_tokens") or 0,
+        "reasoning": completion_details.get("reasoning_tokens") or 0,
+    }
 
 
 def _gemini_thinking_config(thinking_budget):
@@ -95,7 +113,7 @@ def _append_openai_usage(completion, usage_log):
 
 
 def _call_cost(model: str, record: dict) -> float | None:
-    price = MODEL_PRICES.get(model)
+    price = MODEL_PRICES.get(record.get("model") or model)
     if price is None:
         return None
     uncached = max(record["input"] - record["cached"] - record["cache_write"], 0)
@@ -104,16 +122,17 @@ def _call_cost(model: str, record: dict) -> float | None:
     if record["input"] > price["long_context_tokens"]:
         input_multiplier = price["long_context_input_multiplier"]
         output_multiplier = price["long_context_output_multiplier"]
-    return (
+    amount = (
         uncached * price["input"] * input_multiplier
         + record["cached"] * price["cached"] * input_multiplier
         + record["cache_write"] * price["cache_write"] * input_multiplier
         + record["output"] * price["output"] * output_multiplier
     ) / 1_000_000
+    return amount * record.get("rate", 1.0)
 
 
 def print_usage_cost(model: str, usage_log: list[dict]):
-    """Print token totals and the estimated API cost for a finished test."""
+    """Print token totals and the estimated API cost."""
     if not usage_log:
         return
     totals = {
@@ -136,11 +155,20 @@ def print_usage_cost(model: str, usage_log: list[dict]):
 
     costs = [_call_cost(model, record) for record in usage_log]
     if any(cost is None for cost in costs):
-        print(f"No standard price is configured for {model}.")
+        missing = sorted(
+            {
+                record.get("model") or model
+                for record, cost in zip(usage_log, costs)
+                if cost is None
+            }
+        )
+        print(f"No standard price is configured for {', '.join(missing)}.")
         return
     amount = sum(costs)
     shown = f"${amount:.4f}" if amount >= 0.01 else f"${amount:.6f}"
     print(f"Estimated cost: {shown}")
+    if any(record.get("rate", 1.0) == BATCH_PRICE_RATE for record in usage_log):
+        print("Batch clues are priced at half the standard rate.")
 
 
 def run_gemini(
@@ -290,6 +318,15 @@ def parse_secret_marker(prompt: str) -> str | None:
     return match.group(1).strip() if match else None
 
 
+def parse_avoid_list(prompt: str) -> str | None:
+    """Return the avoid-list text embedded in a clue prompt."""
+    match = AVOID_LIST.search(prompt)
+    if match is None:
+        return None
+    avoid = match.group(1).strip()
+    return avoid or None
+
+
 def parse_multi_clue_response(
     text: str,
     expected_words: list[str],
@@ -343,6 +380,45 @@ def parse_multi_clue_response(
     if len(clues) != len(expected):
         raise ValueError(f"{context}: expected {len(expected)} clues, got {len(clues)}")
     return {word: clues[word] for word in expected}
+
+
+def collect_multi_clue_response(
+    text: str,
+    expected_words: list[str],
+    *,
+    normalize_key,
+) -> tuple[dict[str, str], list[str]]:
+    """Return parsed clues and the expected words that still have none.
+
+    Unparseable, empty, unexpected, and duplicate lines are skipped. The
+    missing list is what a follow-up request has to cover.
+    """
+    expected = list(expected_words)
+    expected_set = set(expected)
+    if len(expected) != len(expected_set):
+        raise ValueError("expected words contain duplicates")
+
+    lines = [line.strip() for line in text.strip().splitlines() if line.strip()]
+    lines = [
+        line
+        for line in lines
+        if not line.startswith("<<verbiage_") and not line.endswith(">>")
+    ]
+    clues = {}
+    for line in lines:
+        match = CLUE_LINE.match(line)
+        if match is None:
+            continue
+        raw_word, clue = match.group(1).strip(), match.group(2).strip()
+        if not clue or "\n" in clue:
+            continue
+        key = normalize_key(raw_word)
+        if key is None or key not in expected_set or key in clues:
+            continue
+        clues[key] = clue
+    found = {word: clues[word] for word in expected if word in clues}
+    missing = [word for word in expected if word not in clues]
+    return found, missing
 
 
 class VerbiageGame:
@@ -594,6 +670,70 @@ class VerbiageGame:
             context=context,
         )
 
+    def complete_cluster_results(
+        self,
+        raw_results: dict[str, str],
+        members_by_id: dict[str, list[str]],
+        *,
+        secret_word: str,
+        avoid: str | None,
+        secret_key: str | None = None,
+        model: str = "gpt-6.1-terra",
+        thinking_budget=None,
+        usage_log=None,
+    ) -> dict[str, str]:
+        """Flatten cluster responses, then request any missing clues live."""
+        results = {}
+        missing = []
+        for prompt_id, members in members_by_id.items():
+            found, absent = collect_multi_clue_response(
+                raw_results.get(prompt_id, ""),
+                members,
+                normalize_key=self.normalize_guess_key,
+            )
+            overlap = set(found) & set(results)
+            if overlap:
+                preview = ", ".join(sorted(overlap)[:5])
+                raise RuntimeError(
+                    f"{prompt_id} repeated already-parsed words: {preview}"
+                )
+            results.update(found)
+            missing.extend(absent)
+        missing = list(dict.fromkeys(missing))
+        if not missing:
+            return results
+
+        preview = ", ".join(missing[:8])
+        if len(missing) > 8:
+            preview += ", ..."
+        print(
+            f"Missing {len(missing)} clues ({preview}). "
+            "Requesting them through the normal API."
+        )
+        if not avoid:
+            raise RuntimeError("batch prompts have no avoid list")
+        prompt = self.build_multi_clue_prompt(
+            secret_word=secret_word,
+            avoid=avoid,
+            player_words=missing,
+            secret_key=secret_key,
+        )
+        response = self.get_client(model)(
+            prompt,
+            temperature=0.2,
+            model=model,
+            debug=self.debug,
+            thinking_budget=thinking_budget,
+            usage_log=usage_log,
+        )
+        filled = self.parse_multi_clue_response(response, missing, context="follow-up")
+        overlap = set(filled) & set(results)
+        if overlap:
+            preview = ", ".join(sorted(overlap)[:5])
+            raise RuntimeError(f"follow-up repeated already-parsed words: {preview}")
+        results.update(filled)
+        return results
+
     def generate_things_to_avoid(
         self, word, model, thinking_budget=None, usage_log=None
     ):
@@ -799,23 +939,20 @@ class VerbiageGame:
             )
         return groups
 
-    def generate_batch(
+    def build_batch_prompts(
         self,
         word_size=5,
         model="gpt-6.1-terra",
         word=None,
-        output_file=None,
         thinking_budget=None,
-        batch_function=None,
         max_words=None,
         words_to_exclude=None,
         by_cluster=False,
+        usage_log=None,
     ):
-        """Generate batch responses for all playable words."""
-        if batch_function is None:
-            raise ValueError("batch_function is required for batch generation")
-
-        start_time = time.time()
+        """Choose a secret and build the clue prompts for one puzzle."""
+        if usage_log is None:
+            usage_log = []
         words = self.all_words[str(word_size)]
 
         if word is None:
@@ -827,7 +964,10 @@ class VerbiageGame:
         print("Generating words to avoid")
         word_with_accents = self.get_word_with_accents(word)
         things_to_avoid = self.generate_things_to_avoid(
-            word_with_accents, model, thinking_budget=thinking_budget
+            word_with_accents,
+            model,
+            thinking_budget=thinking_budget,
+            usage_log=usage_log,
         )
         avoid = ", ".join(getattr(things_to_avoid, self.config["avoid_field"]))
 
@@ -862,8 +1002,45 @@ class VerbiageGame:
                 for guess in words_for_clues
             }
             members_by_id = None
+        return word, word_with_accents, avoid, prompts, members_by_id, words_for_clues
 
-        raw_results, _job = batch_function(
+    def generate_batch(
+        self,
+        word_size=5,
+        model="gpt-6.1-terra",
+        word=None,
+        output_file=None,
+        thinking_budget=None,
+        batch_function=None,
+        max_words=None,
+        words_to_exclude=None,
+        by_cluster=False,
+    ):
+        """Generate batch responses for all playable words."""
+        if batch_function is None:
+            raise ValueError("batch_function is required for batch generation")
+
+        start_time = time.time()
+        usage_log = []
+        (
+            word,
+            word_with_accents,
+            avoid,
+            prompts,
+            members_by_id,
+            words_for_clues,
+        ) = self.build_batch_prompts(
+            word_size=word_size,
+            model=model,
+            word=word,
+            thinking_budget=thinking_budget,
+            max_words=max_words,
+            words_to_exclude=words_to_exclude,
+            by_cluster=by_cluster,
+            usage_log=usage_log,
+        )
+
+        batch_outcome = batch_function(
             prompts,
             model=model,
             temperature=0.2,
@@ -872,21 +1049,20 @@ class VerbiageGame:
             location="us-central1",
             thinking_budget=thinking_budget,
         )
+        raw_results = batch_outcome[0]
+        batch_usage = batch_outcome[2] if len(batch_outcome) > 2 else []
 
         if by_cluster:
-            results = {}
-            for prompt_id, members in members_by_id.items():
-                response = raw_results.get(prompt_id, "")
-                parsed = self.parse_multi_clue_response(
-                    response, members, context=prompt_id
-                )
-                overlap = set(parsed) & set(results)
-                if overlap:
-                    raise RuntimeError(
-                        f"{prompt_id} repeated already-parsed words: "
-                        f"{', '.join(sorted(overlap)[:5])}"
-                    )
-                results.update(parsed)
+            results = self.complete_cluster_results(
+                raw_results,
+                members_by_id,
+                secret_word=word_with_accents,
+                avoid=avoid,
+                secret_key=word,
+                model=model,
+                thinking_budget=thinking_budget,
+                usage_log=usage_log,
+            )
             missing = [guess for guess in words_for_clues if guess not in results]
             if missing:
                 preview = ", ".join(missing[:5])
@@ -910,3 +1086,9 @@ class VerbiageGame:
             with open(output_file, "w") as f:
                 json.dump(results, f)
         print(f"Done in {int(time.time() - start_time)} seconds")
+        print_usage_cost(model, [*usage_log, *batch_usage])
+        if usage_log and not batch_usage:
+            print(
+                "Batch token usage was not available, "
+                "so this estimate covers the words-to-avoid call only."
+            )

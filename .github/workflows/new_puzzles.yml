@@ -2,7 +2,8 @@ name: Create New Puzzles and Commit Changes
 
 on:
   schedule:
-    # 01:00 UTC every day. daily skips a language whose puzzle file exists.
+    # 01:00 UTC every day (02:00 in Paris during standard time).
+    # Finish a batch queued for today, then submit tomorrow's batch.
     - cron: "0 1 * * *"
   workflow_dispatch:
 
@@ -26,28 +27,46 @@ jobs:
         run: |
           pip install scripts/
 
-      - name: Run script (EN)
+      - name: Finish today's English puzzle and queue tomorrow
         id: en
         continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python scripts/game.py daily --language en
+          set +e
+          TODAY=$(date -u +%F)
+          TOMORROW=$(date -u -d tomorrow +%F)
+          python scripts/game.py process-finished-batch --language en --date "$TODAY"
+          process_status=$?
+          python scripts/game.py launch-daily-batch --language en --date "$TOMORROW"
+          launch_status=$?
+          if [ "$process_status" -ne 0 ] || [ "$launch_status" -ne 0 ]; then
+            exit 1
+          fi
 
-      - name: Run script (FR)
+      - name: Finish today's French puzzle and queue tomorrow
         id: fr
         continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python scripts/game.py daily --language fr
+          set +e
+          TODAY=$(date -u +%F)
+          TOMORROW=$(date -u -d tomorrow +%F)
+          python scripts/game.py process-finished-batch --language fr --date "$TODAY"
+          process_status=$?
+          python scripts/game.py launch-daily-batch --language fr --date "$TOMORROW"
+          launch_status=$?
+          if [ "$process_status" -ne 0 ] || [ "$launch_status" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Commit and push puzzle files
         if: steps.en.outcome == 'success' || steps.fr.outcome == 'success'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add verbiage/public/puzzles verbiage/src/lib/puzzleCalendars.json
+          git add verbiage/public/puzzles verbiage/src/lib/puzzleCalendars.json verbiage/batch_queue
           if git diff --cached --quiet; then
             echo "No puzzle changes to commit"
             exit 0
