@@ -1,6 +1,7 @@
 """Tests for clustered clue batches and multi-clue parsing."""
 
 import json
+import re
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -9,9 +10,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 from VerbiageGame import (
+    ClueQualityIssue,
+    ClueQualityReview,
     VerbiageGame,
     collect_multi_clue_response,
+    english_clue_error,
+    french_clue_error,
     parse_avoid_list,
+    parse_guidance,
     parse_cluster_members_marker,
     parse_multi_clue_response,
     parse_secret_marker,
@@ -141,11 +147,153 @@ class PromptAndGenerationTest(unittest.TestCase):
         self.assertIn("THE WORD", prompt)
         self.assertNotIn("{{core}}", prompt)
 
+    def test_optional_advice_precedes_final_output_instructions(self):
+        for language in ("en", "fr"):
+            with self.subTest(language=language):
+                game = VerbiageGame(language=language)
+                advice = "Avoid the obvious example."
+                single = game.format_word_response("APPLE", "fruit", advice=advice)
+                batch = game.build_multi_clue_prompt(
+                    "APPLE", "fruit", ["PEAR"], advice=advice
+                )
+                self.assertIn(advice, single)
+                self.assertIn(advice, batch)
+                output_heading = (
+                    "### Output format" if language == "en" else "### Format de réponse"
+                )
+                self.assertLess(batch.index(advice), batch.index(output_heading))
+                self.assertNotIn(
+                    advice, game.build_multi_clue_prompt("APPLE", "fruit", ["PEAR"])
+                )
+
+    def test_guidance_survives_batch_metadata_and_retry(self):
+        game = VerbiageGame(language="en")
+        sense = "a place for burial"
+        advice = "Avoid carved names; consider quiet visits."
+        for prompt in (
+            game.format_word_response(
+                "GRAVE", "burial", sense=sense, advice=advice, include_metadata=True
+            ),
+            game.build_multi_clue_prompt(
+                "GRAVE", "burial", ["STONE"], sense=sense, advice=advice
+            ),
+        ):
+            self.assertEqual(parse_guidance(prompt), (sense, advice))
+        self.assertEqual(parse_guidance("an older prompt"), (None, None))
+        with self.assertRaisesRegex(ValueError, "Invalid guidance"):
+            parse_guidance("<<verbiage_guidance_b64:***>>")
+        calls = []
+
+        def client(prompt, **kwargs):
+            calls.append(prompt)
+            return "STONE: A STONE may stand near THE WORD."
+
+        with patch.object(game, "get_client", return_value=client):
+            game.complete_clue_results(
+                {},
+                ["STONE"],
+                secret_word="GRAVE",
+                avoid="burial",
+                sense=sense,
+                advice=advice,
+            )
+        self.assertIn(sense, calls[0])
+        self.assertIn(advice, calls[0])
+
     def test_french_normalize_guess_key(self):
         game = VerbiageGame(language="fr")
         self.assertEqual(game.normalize_guess_key("allée"), "ALLEE")
         self.assertEqual(game.normalize_guess_key("ALLEE"), "ALLEE")
         self.assertEqual(game.normalize_guess_key("paréo"), "PAREO")
+
+    def test_french_guardrails_handle_accents_and_secret_plurals(self):
+        self.assertIn(
+            "reveals secret",
+            french_clue_error(
+                "Un FILM montre des Papes et LE MOT.", "FILM", "PAPE", "église"
+            ),
+        )
+        self.assertIn(
+            "reveals secret",
+            french_clue_error("LE MOT est dans les chateaux.", "ROI", "CHÂTEAU", "roi"),
+        )
+        self.assertIn(
+            "forbidden",
+            french_clue_error("Une EGLISE abrite LE MOT.", "FILM", "PAPE", "église"),
+        )
+        self.assertIsNone(
+            french_clue_error(
+                "LE MOT peut se trouver dans une ÉGLISE.", "EGLISE", "PAPE", "église"
+            )
+        )
+        self.assertIsNone(
+            french_clue_error("Un papetier regarde LE MOT.", "FILM", "PAPE", "pape")
+        )
+        self.assertEqual(
+            french_clue_error("Une phrase sans marqueur.", "FILM", "PAPE", "église"),
+            "missing LE MOT",
+        )
+
+    def test_french_guidance_and_retry(self):
+        game = VerbiageGame(language="fr")
+        model = game.config["response_model_class"](
+            sens="Le chef d'une Église.",
+            mots_interdits=["pape", "église"],
+            conseils="Évite les vêtements blancs.",
+        )
+        game.all_words["4"]["playable"] = ["FILM"]
+        calls = []
+
+        def client(prompt, **kwargs):
+            calls.append(prompt)
+            if len(calls) == 1:
+                return "FILM: Des papes figurent dans LE MOT."
+            return "FILM: Un FILM peut montrer LE MOT à une foule."
+
+        with (
+            patch.object(game, "_load_test_words", return_value={"PAPE": ["FILM"]}),
+            patch.object(game, "generate_things_to_avoid", return_value=model),
+            patch.object(game, "get_client", return_value=client),
+            redirect_stdout(StringIO()) as output,
+        ):
+            game.run_tests_batched(with_advice=True)
+        self.assertEqual(len(calls), 2)
+        for prompt in calls:
+            self.assertIn(model.sens, prompt)
+            self.assertIn(model.conseils, prompt)
+        self.assertIn("FILM: Un FILM peut montrer LE MOT", output.getvalue())
+        self.assertNotIn("Des papes", output.getvalue())
+
+    def test_french_quality_review_regenerates_awkward_placeholder(self):
+        game = VerbiageGame(language="fr")
+        reviews = []
+
+        def client(prompt, **kwargs):
+            if kwargs.get("response_model"):
+                reviews.append(prompt)
+                issues = (
+                    [ClueQualityIssue(guess="ROBE", reason="à LE MOT")]
+                    if len(reviews) == 1
+                    else []
+                )
+                return ClueQualityReview(issues=issues)
+            return "ROBE: LE MOT peut porter une ROBE lors d'une cérémonie."
+
+        with patch.object(game, "get_client", return_value=client):
+            result = game.complete_clue_results(
+                {"ROBE": "Une ROBE est associée à LE MOT."},
+                ["ROBE"],
+                secret_word="PAPE",
+                avoid="pape",
+                sense="Un chef spirituel.",
+                advice="Reste indirect.",
+                review_quality=True,
+            )
+        self.assertIn('"language": "fr"', reviews[0])
+        self.assertEqual(len(reviews), 2)
+        self.assertEqual(
+            result["ROBE"], "LE MOT peut porter une ROBE lors d'une cérémonie."
+        )
 
     def test_generate_batch_by_cluster_flattens_results(self):
         game = VerbiageGame(language="en")
@@ -195,7 +343,7 @@ class PromptAndGenerationTest(unittest.TestCase):
 
         def fake_batch(prompts, **_kwargs):
             prompt_id = next(iter(prompts))
-            return {prompt_id: f"{selected[0]}: only one clue"}, object()
+            return {prompt_id: f"{selected[0]}: THE WORD has one clue"}, object()
 
         def fake_client(prompt, **_kwargs):
             calls.append(prompt)
@@ -224,9 +372,190 @@ class PromptAndGenerationTest(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertIn(f"<<verbiage_cluster_members:{selected[1]}>>", calls[0])
         self.assertNotIn(selected[0], calls[0])
-        self.assertEqual(puzzle[selected[0]], "only one clue")
+        self.assertEqual(puzzle[selected[0]], "THE WORD has one clue")
         self.assertEqual(puzzle[selected[1]], f"THE WORD relates to {selected[1]}.")
         self.assertEqual(puzzle["solution"], "APPLE")
+
+    def test_english_clue_rules(self):
+        self.assertIsNone(
+            english_clue_error("THE WORD likes parties.", "PEAR", "APPLE", "art")
+        )
+        self.assertIsNone(
+            english_clue_error("THE WORD likes PEAR.", "PEAR", "APPLE", "pear")
+        )
+        self.assertIsNone(
+            english_clue_error("THE WORDs have fun.", "PEAR", "APPLE", "art")
+        )
+        self.assertEqual(
+            english_clue_error("A clue.", "PEAR", "APPLE", "art"), "missing THE WORD"
+        )
+        self.assertIsNotNone(
+            english_clue_error("THE WORD likes ART.", "PEAR", "APPLE", "art")
+        )
+        self.assertIsNone(english_clue_error("APPLE", "APPLE", "APPLE", "apple"))
+
+    def test_secret_plural_and_possessive_are_not_exempt(self):
+        examples = [
+            ("POPE", "FILM", "A FILM called The Two Popes features THE WORD."),
+            ("POPE", "FILM", "The pope’s FILM features THE WORD."),
+            ("CITY", "TOWN", "Two CITIES surround THE WORD."),
+            ("CHILD", "GAMES", "THE WORD is among the children."),
+            ("POPE", "POPES", "The POPES include THE WORD."),
+        ]
+        for secret, guess, clue in examples:
+            with self.subTest(secret=secret, clue=clue):
+                self.assertIn(
+                    "reveals secret", english_clue_error(clue, guess, secret, "other")
+                )
+        self.assertIsNone(
+            english_clue_error("THE WORD likes parties.", "FILM", "ART", "art")
+        )
+        self.assertIsNone(
+            english_clue_error("THE WORD has clouds.", "FILM", "POPE", "cloud")
+        )
+
+    def test_test_mode_regenerates_a_secret_plural_leak(self):
+        for batched in (False, True):
+            with self.subTest(batched=batched):
+                game = VerbiageGame(language="en")
+                calls = []
+
+                def client(prompt, **kwargs):
+                    calls.append(prompt)
+                    if len(calls) == 1:
+                        clue = "A FILM called The Two Popes features THE WORD."
+                        return "FILM: " + clue if batched else clue
+                    return "FILM: THE WORD has appeared in a FILM."
+
+                generated = type(
+                    "Avoid",
+                    (),
+                    {
+                        "avoid": ["pope"],
+                        "advice": "Be indirect.",
+                        "sense": "a religious leader",
+                    },
+                )()
+                with (
+                    patch.object(
+                        game, "_load_test_words", return_value={"POPE": ["FILM"]}
+                    ),
+                    patch.object(
+                        game, "generate_things_to_avoid", return_value=generated
+                    ),
+                    patch.object(game, "get_client", return_value=client),
+                    redirect_stdout(StringIO()) as output,
+                ):
+                    (game.run_tests_batched if batched else game.run_tests)(
+                        with_advice=True
+                    )
+                self.assertEqual(len(calls), 2)
+                self.assertIn(
+                    "FILM: THE WORD has appeared in a FILM.", output.getvalue()
+                )
+                self.assertNotIn("The Two Popes", output.getvalue())
+                self.assertIn("religious leader", calls[1])
+                self.assertIn("Be indirect", calls[1])
+
+    def test_interactive_retry_does_not_print_forbidden_terms(self):
+        game = VerbiageGame(language="en")
+        with (
+            patch.object(
+                game,
+                "get_client",
+                return_value=lambda *a, **k: "FILM: THE WORD appears in a FILM.",
+            ),
+            redirect_stdout(StringIO()) as output,
+        ):
+            game.complete_clue_results(
+                {"FILM": "THE WORD is a bishop in a FILM."},
+                ["FILM"],
+                secret_word="POPE",
+                avoid="bishop",
+                show_details=False,
+            )
+        self.assertNotIn("bishop", output.getvalue())
+
+    def test_invalid_clues_are_retried_and_rechecked(self):
+        game = VerbiageGame(language="en")
+        responses = iter(
+            [
+                "PEAR: THE WORD is fruit.",
+                "PEAR: THE WORD likes PEAR.",
+            ]
+        )
+        calls = []
+
+        def client(prompt, **kwargs):
+            calls.append(prompt)
+            return next(responses)
+
+        with patch.object(game, "get_client", return_value=client):
+            result = game.complete_clue_results(
+                {"PEAR": "A clue without the placeholder."},
+                ["PEAR"],
+                secret_word="APPLE",
+                avoid="apple, fruit",
+                model="test",
+            )
+        self.assertEqual(result["PEAR"], "THE WORD likes PEAR.")
+        self.assertEqual(len(calls), 2)
+
+    def test_invalid_clues_fail_after_bounded_retries(self):
+        game = VerbiageGame(language="en")
+        with patch.object(
+            game, "get_client", return_value=lambda *a, **k: "PEAR: fruit"
+        ):
+            with self.assertRaisesRegex(RuntimeError, "after 2 retries.*PEAR"):
+                game.complete_clue_results(
+                    {},
+                    ["PEAR"],
+                    secret_word="APPLE",
+                    avoid="apple, fruit",
+                )
+
+    def test_quality_review_rechecks_regenerated_clues_and_preserves_good_ones(self):
+        game = VerbiageGame(language="en")
+        reviews, regenerations = [], []
+
+        def client(prompt, **kwargs):
+            if kwargs.get("response_model"):
+                reviews.append(prompt)
+                if len(reviews) < 3:
+                    return ClueQualityReview(
+                        issues=[ClueQualityIssue(guess="CLOUD", reason="wrong sense")]
+                    )
+                return ClueQualityReview(issues=[])
+            regenerations.append(prompt)
+            return "CLOUD: A CLOUD casts a shadow over THE WORD."
+
+        with patch.object(game, "get_client", return_value=client):
+            result = game.complete_clue_results(
+                {
+                    "CLOUD": "THE WORD describes a serious CLOUD.",
+                    "STONE": "A STONE stands by THE WORD.",
+                },
+                ["CLOUD", "STONE"],
+                secret_word="GRAVE",
+                avoid="burial",
+                sense="a place where someone is buried",
+                advice="Avoid a direct definition.",
+                review_quality=True,
+            )
+        self.assertEqual(len(reviews), 3)
+        self.assertEqual(len(regenerations), 2)
+        self.assertIn("wrong sense", regenerations[0])
+        self.assertNotIn('"STONE"', reviews[1])
+        self.assertEqual(result["STONE"], "A STONE stands by THE WORD.")
+
+    def test_quality_review_requires_intended_sense(self):
+        game = VerbiageGame(language="en")
+        with self.assertRaisesRegex(
+            ValueError, "requires clues with an intended sense"
+        ):
+            game.complete_clue_results(
+                {}, ["PEAR"], secret_word="APPLE", avoid="fruit", review_quality=True
+            )
 
     def test_run_tests_batched_one_prompt_per_secret(self):
         game = VerbiageGame(language="en")
@@ -467,6 +796,32 @@ class ProcessBatchTest(unittest.TestCase):
         )
         self.assertEqual(parse_avoid_list(french), "chose, truc")
 
+    def test_avoid_metadata_and_legacy_recovery(self):
+        for language in ("en", "fr"):
+            with self.subTest(language=language):
+                game = VerbiageGame(language=language)
+                avoid = "art, café, e.g., item"
+                batch = game.build_multi_clue_prompt("APPLE", avoid, ["PEAR"])
+                single = game.format_word_response(
+                    "APPLE", avoid, include_metadata=True
+                )
+                for prompt in (batch, single):
+                    # Recovery must use metadata even if the prose changes.
+                    self.assertEqual(
+                        parse_avoid_list(prompt.replace(avoid, "changed")), avoid
+                    )
+                if language == "en":
+                    old_prompt = re.sub(r"(?m)^<<verbiage_avoid_b64:.*>>\n?", "", batch)
+                    self.assertEqual(parse_avoid_list(old_prompt), "art, café, e")
+
+        # Previously submitted French prompts used this exact prose format.
+        self.assertEqual(
+            parse_avoid_list("en particulier ces mots: chose, truc."), "chose, truc"
+        )
+
+        with self.assertRaisesRegex(ValueError, "Invalid avoid-list metadata"):
+            parse_avoid_list("<<verbiage_avoid_b64:***>>")
+
     def test_process_completed_batch_follows_up_and_prices(self):
         game = VerbiageGame(language="en")
         prompt = game.build_multi_clue_prompt(
@@ -474,6 +829,8 @@ class ProcessBatchTest(unittest.TestCase):
             avoid="hint, clue",
             player_words=["PEAR", "GRAPE"],
             secret_key="APPLE",
+            sense="an edible fruit from a tree",
+            advice="Avoid naming common varieties.",
         )
         input_row = {
             "custom_id": "cluster-0000",
@@ -533,6 +890,8 @@ class ProcessBatchTest(unittest.TestCase):
         def fake_chat(prompt_text, **kwargs):
             self.assertIn("<<verbiage_cluster_members:GRAPE>>", prompt_text)
             self.assertIn("hint, clue", prompt_text)
+            self.assertIn("an edible fruit from a tree", prompt_text)
+            self.assertIn("Avoid naming common varieties.", prompt_text)
             kwargs["usage_log"].append(follow_record)
             return "GRAPE: THE WORD relates to GRAPE."
 

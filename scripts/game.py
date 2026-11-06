@@ -110,13 +110,20 @@ def self_play(language, word, model, debug, word_size, thinking_budget):
     is_flag=True,
     help="Send one multi-clue prompt per secret test word through the normal API",
 )
-def test(language, word, model, debug, thinking_budget, word_size, batched):
+@click.option(
+    "--with-advice", is_flag=True, help="Include generated advice in clue prompts"
+)
+def test(
+    language, word, model, debug, thinking_budget, word_size, batched, with_advice
+):
     """Run tests on a series of words."""
     # Create game instance for the specified language
     game = VerbiageGame(language=language, debug=debug)
 
     runner = game.run_tests_batched if batched else game.run_tests
-    runner(model=model, word=word, thinking_budget=thinking_budget)
+    runner(
+        model=model, word=word, thinking_budget=thinking_budget, with_advice=with_advice
+    )
 
 
 def _previous_solutions(puzzles_dir, language):
@@ -207,8 +214,21 @@ def daily(language, word, model, debug, word_size, thinking_budget, by_cluster, 
     is_flag=True,
     help="Send one prompt per semantic cluster instead of one per word",
 )
+@click.option(
+    "--review-quality",
+    is_flag=True,
+    help="Review clues with extra paid model calls",
+)
 def batch(
-    language, word, model, output_file, word_size, thinking_budget, debug, by_cluster
+    language,
+    word,
+    model,
+    output_file,
+    word_size,
+    thinking_budget,
+    debug,
+    by_cluster,
+    review_quality,
 ):
     """Run all the playable words through the model."""
     # Create game instance for the specified language
@@ -229,6 +249,7 @@ def batch(
         thinking_budget=thinking_budget,
         batch_function=batch_function,
         by_cluster=by_cluster,
+        review_quality=review_quality,
     )
 
 
@@ -369,8 +390,13 @@ def launch_daily_batch(language, word, model, debug, word_size, thinking_budget,
     help="Write the puzzle here instead of the dated daily file",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--review-quality",
+    is_flag=True,
+    help="Review clues with extra paid model calls",
+)
 def process_finished_batch(
-    batch_id, language, model, thinking_budget, date, output_file, debug
+    batch_id, language, model, thinking_budget, date, output_file, debug, review_quality
 ):
     """Download a finished batch, fill any missing clues, and print the cost.
 
@@ -407,6 +433,7 @@ def process_finished_batch(
             model=model,
             thinking_budget=thinking_budget,
             debug=debug,
+            review_quality=review_quality,
         )
         results["solution"] = solution
         _write_puzzle_file(output_file, results)

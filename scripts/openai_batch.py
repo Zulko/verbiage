@@ -15,6 +15,7 @@ from VerbiageGame import (
     _openai_request_params,
     parse_avoid_list,
     parse_cluster_members_marker,
+    parse_guidance,
     parse_secret_marker,
     usage_record_from_openai_usage,
 )
@@ -301,6 +302,7 @@ def process_completed_batch(
     model: str = "gpt-6.1-terra",
     thinking_budget: str = "low",
     debug: bool = False,
+    review_quality: bool = False,
 ) -> tuple[dict[str, str], str, list[dict]]:
     """Download a finished batch, fill missing clues live, and return usage.
 
@@ -378,24 +380,23 @@ def process_completed_batch(
         )
 
     game = VerbiageGame(language=language, debug=debug)
+    sense, advice = (
+        parse_guidance(next(iter(prompts.values()))) if prompts else (None, None)
+    )
     if not members_by_id:
-        missing = [
-            word for word in input_ids if not str(raw_results.get(word, "")).strip()
-        ]
-        results = {word: raw_results[word] for word in input_ids if word not in missing}
-        if missing:
-            avoid = _avoid_from_prompts(prompts)
-            filled = game.complete_cluster_results(
-                {},
-                {"follow-up": missing},
-                secret_word=secret_word,
-                avoid=avoid,
-                secret_key=solution,
-                model=model,
-                thinking_budget=thinking_budget,
-                usage_log=usage_log,
-            )
-            results.update(filled)
+        results = game.complete_clue_results(
+            raw_results,
+            input_ids,
+            secret_word=secret_word,
+            avoid=_avoid_from_prompts(prompts),
+            secret_key=solution,
+            model=model,
+            thinking_budget=thinking_budget,
+            usage_log=usage_log,
+            sense=sense,
+            advice=advice,
+            review_quality=review_quality,
+        )
         print(f"Batch {batch.id} has {len(results)} clues for {solution}")
         return results, solution, usage_log
 
@@ -409,6 +410,9 @@ def process_completed_batch(
         model=model,
         thinking_budget=thinking_budget,
         usage_log=usage_log,
+        sense=sense,
+        advice=advice,
+        review_quality=review_quality,
     )
     print(
         f"Batch {batch.id} has {len(results)} clues "
