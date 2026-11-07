@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [
     svelte({ runes: true }),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
       includeAssets: ['logo.svg', 'logo192.png', 'logo512.png', 'calendar-icon.svg', 'github-icon.svg'],
       manifest: {
@@ -37,20 +40,9 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,webmanifest,svg,png}'],
-        runtimeCaching: [
-          {
-            urlPattern: /\/puzzles\/.*\.json\.gz$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'puzzles',
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
+        rollupFormat: 'iife',
       },
     }),
   ],
