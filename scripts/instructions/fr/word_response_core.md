@@ -10,6 +10,8 @@ Donne un **indice d'une seule phrase** qui explique comment **LE MOT** (le mot s
 - Utilise le sens de nom commun indiqué, même si le mot secret possède d'autres sens ou peut aussi être un verbe ou un adjectif.
 - Si la proposition est elle-même un terme interdit, tu peux l'utiliser, mais ne l'associe pas à d'autres détails évidents qui révéleraient le secret.
 - Donne au joueur une idée utile : décris une situation, une action, une association ou un contraste précis reliant la proposition au sens attendu. Si l'indice serait tout aussi vrai pour presque n'importe quel objet ou lieu sans rapport, choisis un lien plus distinctif. Une association ludique ou lointaine est bienvenue si elle est fondée et vraie ; elle n'a pas à identifier le secret à elle seule.
+- Évite une caractéristique essentielle, une source habituelle, un usage courant, un synonyme proche ou une association familière qui désigne directement le secret, même sans terme interdit. Ne cumule pas des détails qui rendent la réponse évidente. Pour un mot général, évite d’en donner un exemple évident.
+- Avant de répondre, considère la proposition et l’indice seuls : si un joueur peut facilement trouver le secret à partir de cette seule phrase, choisis un lien moins direct. Il doit rester vrai et assez précis pour être utile avec d’autres indices.
 - Sois créatif et écris toujours une seule phrase.
 - Ne fais pas référence aux ressemblances entre les lettres des deux mots.
 - **Rends l'indice difficile et ambigu, mais informatif !** Suggère une piste réelle sans rendre la réponse évidente. Idéalement, le joueur trouvera le secret en réunissant plusieurs indices, pas grâce à un seul.
@@ -28,9 +30,7 @@ Ces exemples ont leurs propres secrets et propositions ; ils ne correspondent pa
 
 - **Mot secret :** MYTHE ; **Proposition :** ZÉRO → vague : « LE MOT et ZÉRO peuvent tous deux être écrits. » Mieux : « LE MOT peut contenir ZÉRO vérité et garder toute une salle silencieuse. »
 
-- **Mot secret :** EXTRATERRESTRE ; **Proposition :** SOUCOUPE → « LE MOT pourrait utiliser une SOUCOUPE pour voyager. »
-- **Mot secret :** NUIT ; **Proposition :** HEURES → « LE MOT compte plusieurs HEURES. »
-- **Mot secret :** PRISME ; **Proposition :** COULEUR ; **Termes à éviter :** prisme, couleur, lumière, arc-en-ciel → « LE MOT peut créer des bandes de COULEUR. » (COULEUR est autorisé car c'est la proposition.)
-- **Mot secret :** ACTEUR ; **Proposition :** HISTOIRE → « LE MOT donne vie à une HISTOIRE. »
-- **Mot secret :** PAIN ; **Proposition :** MAISON → « Dans un conte, LE MOT marque le chemin qui s'éloigne d'une MAISON. »
-- **Mot secret :** SUCRE ; **Proposition :** LASER → « LE MOT et un LASER peuvent tous deux apporter de la chaleur et de l'énergie ! »
+Évite un indice qui définit presque la réponse, même sans terme interdit :
+
+- **Mot secret :** SON ; **Proposition :** FILM → trop facile : « Dans un FILM, LE MOT produit par une porte qui grince peut avertir avant l’arrivée de quelqu’un. » Mieux : « Un FILM peut utiliser LE MOT pour donner l’impression qu’une pièce vide est peuplée. »
+- **Mot secret :** PAIN ; **Proposition :** MAISON → trop facile : « Dans un conte, LE MOT marque le chemin qui s’éloigne d’une MAISON. » Mieux : « Une MAISON peut sembler plus accueillante quand LE MOT est partagé à table. »

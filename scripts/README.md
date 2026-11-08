@@ -120,7 +120,7 @@ includes both when generating test clues; omit `--with-advice` to omit the advic
 For French, use `python game.py test --language fr --word PAPE --with-advice`.
 
 `python game.py process-finished-batch --date YYYY-MM-DD --review-quality`
-optionally checks clues for obvious meaning or placeholder problems and
+optionally checks clues for obvious giveaways, meaning or placeholder problems and
 regenerates flagged clues. `game.py batch` also accepts `--review-quality`.
 The review uses additional normal-rate model calls, can make mistakes, and requires
 the intended meaning stored in batches created by the current version. It is off by

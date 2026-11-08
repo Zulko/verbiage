@@ -9,6 +9,8 @@ Provide a **single-sentence** hint that explains how **THE WORD** (the secret wo
 - Use the supplied intended noun sense throughout, even if the secret has other meanings or can also be a verb or adjective.
 - When the guess is itself a forbidden term, you may use the guess, but do not combine it with other obvious identifying details that give the secret away.
 - Give the player a meaningful idea to work with: describe a specific situation, action, association, or contrast connecting the guess to the intended meaning. If the clue would be equally true for almost any unrelated object or place, choose a more distinctive connection. A playful or distant association is welcome when it is grounded and truthful; it need not identify the secret on its own.
+- Avoid a defining feature, typical source, common use, close synonym, or familiar association that points straight to the secret, even if no forbidden word appears. Do not combine details that make the answer obvious. For a broad word, avoid naming a clear example of it.
+- Before answering, consider the guess and the clue by themselves: if a player could readily name the secret from this one sentence, choose a less direct connection. Keep the connection true and specific enough to be useful alongside other clues.
 - The hint should be **creative**, and **always one sentence long**.
 - Don't refer to similarities in the two words' letters.
 - **Make it difficult and ambiguous, but informative!** Suggest a real angle without making the answer obvious. Ideally the player should not be able to find the word from a single clue; it is by putting clues together that they will find it.
@@ -26,9 +28,7 @@ Avoid connections so general they offer little to work with:
 
 - **Secret word:** MYTH; **Guess:** ZERO → generic: *"Both THE WORD and ZERO can be written down."* Better: *"THE WORD can hold ZERO truth and still keep a room quiet."*
 
-- **Secret word:** ALIEN; **Guess:** SAUCER → *"THE WORD might use a SAUCER to go places."*  
-- **Secret word:** NIGHT; **Guess:** HOURS → *"THE WORD has several HOURS."*  
-- **Secret word:** PRISM; **Guess:** COLOR; **Avoid:** prism, color, light, rainbow → *"THE WORD can create bands of COLOR."* (COLOR is allowed because it is the guess.)
-- **Secret word:** ACTOR; **Guess:** STORY → *"THE WORD gives life to a STORY."*  
-- **Secret word:** BREAD; **Guess:** HOUSE → *"In a fairy tale, THE WORD marks a path away from a HOUSE."*
-- **Secret word:** SUGAR; **Guess:** LASER → *"Both THE WORD and a LASER can bring warmth and energy!"*
+Avoid a clue that practically defines the answer, even without a forbidden word:
+
+- **Secret word:** SOUND; **Guess:** MOVIE → too easy: *"In a MOVIE, THE WORD from a creaking door can warn us before anyone enters."* Better: *"A MOVIE can use THE WORD to make an empty room feel crowded."*
+- **Secret word:** BREAD; **Guess:** HOUSE → too easy: *"In a fairy tale, THE WORD marks a path away from a HOUSE."* Better: *"A HOUSE might feel more welcoming when THE WORD is shared at the table."*
