@@ -5,10 +5,13 @@ Provide a **single-sentence** hint that explains how **THE WORD** (the secret wo
 - Refer to the secret word as "**THE WORD**" in your sentence (do not use the actual secret word).  
 - Make **THE WORD** flow naturally in the sentence as written, without relying on mentally replacing it with the secret. Write around the placeholder instead of forcing it into a phrase built for the secret word.
 - In particular, avoid phrases such as "THE WORD of many voices" that read like a missing noun rather than a natural reference to the secret. Rephrase the sentence so THE WORD can stand naturally on its own.
-- **Avoid** using any of these terms (unless one of them *is* the player’s guess word): {{avoid}}.  
-- Use the supplied intended noun sense throughout, even if the secret has other meanings or can also be a verb or adjective.
+- Avoid the forbidden terms below unless a term is the player’s guess word.
+
+Forbidden terms JSON: {{avoid}}
+
+- Use any familiar common-noun meaning of the secret, including meanings beyond the supplied examples. Do not use verb or adjective senses. Choose an angle that fits the guess; vary meanings and approaches across clues when natural.
 - When the guess is itself a forbidden term, you may use the guess, but do not combine it with other obvious identifying details that give the secret away.
-- Give the player a meaningful idea to work with: describe a specific situation, action, association, or contrast connecting the guess to the intended meaning. If the clue would be equally true for almost any unrelated object or place, choose a more distinctive connection. A playful or distant association is welcome when it is grounded and truthful; it need not identify the secret on its own.
+- Give the player a meaningful idea to work with: describe a specific situation, action, association, or contrast connecting the guess to a valid noun meaning. If the clue would be equally true for almost any unrelated object or place, choose a more distinctive connection. A playful or distant association is welcome when it is grounded and truthful; it need not identify the secret on its own.
 - Avoid a defining feature, typical source, common use, close synonym, or familiar association that points straight to the secret, even if no forbidden word appears. Do not combine details that make the answer obvious. For a broad word, avoid naming a clear example of it.
 - Before answering, consider the guess and the clue by themselves: if a player could readily name the secret from this one sentence, choose a less direct connection. Keep the connection true and specific enough to be useful alongside other clues.
 - The hint should be **creative**, and **always one sentence long**.

@@ -114,8 +114,8 @@ The project is configured with:
 
 ## Batch Processing
 
-English and French clue generation uses an intended noun meaning and word-specific advice.
-`python game.py test --word POPE --with-advice` prints the meaning and advice and
+English and French clue generation uses common noun meanings and word-specific advice.
+`python game.py test --word POPE --with-advice` prints the noun meanings and advice and
 includes both when generating test clues; omit `--with-advice` to omit the advice.
 For French, use `python game.py test --language fr --word PAPE --with-advice`.
 
@@ -123,7 +123,7 @@ For French, use `python game.py test --language fr --word PAPE --with-advice`.
 optionally checks clues for obvious giveaways, meaning or placeholder problems and
 regenerates flagged clues. `game.py batch` also accepts `--review-quality`.
 The review uses additional normal-rate model calls, can make mistakes, and requires
-the intended meaning stored in batches created by the current version. It is off by
+noun meaning guidance stored in the submitted batch prompts. It is off by
 default; the literal forbidden-word and placeholder checks still run without it.
 English and French clues also reject the secret itself and common plural forms;
 less common irregular forms and other derivatives are not guaranteed to be detected.

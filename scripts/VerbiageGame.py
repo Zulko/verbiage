@@ -344,6 +344,17 @@ def parse_avoid_list(prompt: str) -> str | None:
         if not avoid.strip():
             raise ValueError("Empty avoid-list metadata in batch prompt")
         return avoid
+    match = re.search(r"(?m)^Forbidden terms JSON: (.+)$", prompt)
+    if match:
+        try:
+            terms = json.loads(match.group(1))
+            if not isinstance(terms, list) or not all(
+                isinstance(term, str) for term in terms
+            ):
+                raise ValueError("invalid terms")
+            return ", ".join(terms) or None
+        except ValueError as exc:
+            raise ValueError("Invalid forbidden terms in batch prompt") from exc
     match = AVOID_LIST.search(prompt)
     if match is None:
         return None
@@ -367,7 +378,20 @@ def parse_guidance(prompt: str) -> tuple[str | None, str | None]:
     """Recover guidance for retry prompts; older batches have none."""
     marker = GUIDANCE_MARKER.search(prompt)
     if marker is None:
-        return None, None
+        values = []
+        for label in ("Noun meanings JSON", "Clue advice JSON"):
+            match = re.search(rf"(?m)^{label}: (.+)$", prompt)
+            if not match:
+                values.append(None)
+                continue
+            try:
+                value = json.loads(match.group(1))
+                if not isinstance(value, str):
+                    raise ValueError("invalid guidance field")
+                values.append(value)
+            except ValueError as exc:
+                raise ValueError("Invalid guidance in batch prompt") from exc
+        return tuple(values)
     try:
         data = json.loads(
             base64.b64decode(marker.group(1), altchars=b"-_", validate=True).decode(
@@ -708,21 +732,15 @@ class VerbiageGame:
         self, avoid: str, advice: str | None = None, sense: str | None = None
     ) -> str:
         """Shared clue rules used by single-word and multi-word prompts."""
-        core = format_template(self.prompts_path / "word_response_core.md", avoid=avoid)
+        terms = [term.strip() for term in avoid.split(",") if term.strip()]
+        core = format_template(
+            self.prompts_path / "word_response_core.md",
+            avoid=json.dumps(terms, ensure_ascii=False),
+        )
         if sense:
-            label = (
-                "Intended meaning of the secret word"
-                if self.language == "en"
-                else "Sens attendu du mot secret"
-            )
-            core += f"\n\n{label}: {sense}"
+            core += f"\n\nNoun meanings JSON: {json.dumps(sense, ensure_ascii=False)}"
         if advice:
-            label = (
-                "A word of advice on the secret word"
-                if self.language == "en"
-                else "Conseil sur le mot secret"
-            )
-            core += f"\n\n{label}: {advice}"
+            core += f"\n\nClue advice JSON: {json.dumps(advice, ensure_ascii=False)}"
         return core
 
     def format_word_response(
@@ -742,10 +760,6 @@ class VerbiageGame:
             core=self._word_response_core(avoid, advice, sense),
             **extra,
         )
-        if include_metadata:
-            prompt += (
-                f"\n{avoid_list_marker(avoid)}\n{guidance_marker(sense, advice)}\n"
-            )
         return prompt
 
     def normalize_guess_key(self, raw_word: str) -> str | None:
@@ -832,9 +846,7 @@ class VerbiageGame:
             word_count=str(len(player_words)),
             cluster_members=",".join(player_words),
         )
-        return (
-            prompt + f"\n{avoid_list_marker(avoid)}\n{guidance_marker(sense, advice)}\n"
-        )
+        return prompt
 
     def parse_multi_clue_response(
         self, text: str, expected_words: list[str], context: str = "response"
@@ -915,7 +927,7 @@ class VerbiageGame:
         if not avoid:
             raise RuntimeError("batch prompts have no avoid list")
         if review_quality and not sense:
-            raise ValueError("Quality review requires clues with an intended sense")
+            raise ValueError("Quality review requires noun meaning guidance")
         reviewed = {}
         for attempt in range(3):
             reasons = {}
@@ -952,8 +964,8 @@ class VerbiageGame:
                     prompt = (
                         "Review these clues for a word-guessing game. "
                         "Flag only clear errors: the clue relies on a different "
-                        "meaning "
-                        "or part of speech than the intended noun sense, or "
+                        "part of speech than a common noun, or relies on an obscure "
+                        "or false meaning, or "
                         f"{placeholder} "
                         "reads awkwardly as written and only works when replaced by "
                         f"the secret. For example, '{awkward}' is awkward. "
@@ -963,6 +975,8 @@ class VerbiageGame:
                         "even if it uses no forbidden word. For example, for SOUND "
                         "and MOVIE, a creaking door warning of an arrival is a giveaway. "
                         "Judge each clue with its guess, without using other clues. "
+                        "Accept any familiar common-noun meaning, including ones "
+                        "not listed in the supplied guidance. "
                         "Do not flag a clue merely for being indirect, "
                         "playful or ambiguous. "
                         "Return issues only for flagged guesses, with a brief reason.\n"
@@ -970,7 +984,7 @@ class VerbiageGame:
                             {
                                 "language": self.language,
                                 "secret": secret_word,
-                                "sense": sense,
+                                "common_noun_meanings": sense,
                                 "clues": dict(entries),
                             },
                             ensure_ascii=False,

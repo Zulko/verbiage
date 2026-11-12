@@ -10,6 +10,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from VerbiageGame import (
+    avoid_list_marker,
+    guidance_marker,
     ClueQualityIssue,
     ClueQualityReview,
     VerbiageGame,
@@ -131,7 +133,7 @@ class PromptAndGenerationTest(unittest.TestCase):
         self.assertIn("- PEAR", prompt)
         self.assertIn("- GRAPE", prompt)
         self.assertIn("THE WORD", prompt)
-        self.assertIn("fruit, orchard", prompt)
+        self.assertEqual(parse_avoid_list(prompt), "fruit, orchard")
         self.assertIn("<<verbiage_secret:APPLE>>", prompt)
         self.assertIn("<<verbiage_cluster_members:PEAR,GRAPE>>", prompt)
         self.assertNotIn("{{core}}", prompt)
@@ -542,6 +544,9 @@ class PromptAndGenerationTest(unittest.TestCase):
                 advice="Avoid a direct definition.",
                 review_quality=True,
             )
+        self.assertIn("common_noun_meanings", reviews[0])
+        self.assertIn("part of speech than a common noun", reviews[0])
+        self.assertNotIn("different meaning or part of speech than the intended noun sense", reviews[0])
         self.assertEqual(len(reviews), 3)
         self.assertEqual(len(regenerations), 2)
         self.assertIn("wrong sense", regenerations[0])
@@ -551,7 +556,7 @@ class PromptAndGenerationTest(unittest.TestCase):
     def test_quality_review_requires_intended_sense(self):
         game = VerbiageGame(language="en")
         with self.assertRaisesRegex(
-            ValueError, "requires clues with an intended sense"
+            ValueError, "requires noun meaning guidance"
         ):
             game.complete_clue_results(
                 {}, ["PEAR"], secret_word="APPLE", avoid="fruit", review_quality=True
@@ -801,24 +806,17 @@ class ProcessBatchTest(unittest.TestCase):
             with self.subTest(language=language):
                 game = VerbiageGame(language=language)
                 avoid = "art, café, e.g., item"
-                batch = game.build_multi_clue_prompt("APPLE", avoid, ["PEAR"])
-                single = game.format_word_response(
-                    "APPLE", avoid, include_metadata=True
-                )
-                for prompt in (batch, single):
-                    # Recovery must use metadata even if the prose changes.
-                    self.assertEqual(
-                        parse_avoid_list(prompt.replace(avoid, "changed")), avoid
-                    )
-                if language == "en":
-                    old_prompt = re.sub(r"(?m)^<<verbiage_avoid_b64:.*>>\n?", "", batch)
-                    self.assertEqual(parse_avoid_list(old_prompt), "art, café, e")
+                for prompt in (
+                    game.build_multi_clue_prompt("APPLE", avoid, ["PEAR"]),
+                    game.format_word_response("APPLE", avoid, include_metadata=True),
+                ):
+                    self.assertEqual(parse_avoid_list(prompt), avoid)
+                    self.assertNotIn("verbiage_avoid_b64", prompt)
+                    self.assertNotIn("verbiage_guidance_b64", prompt)
 
-        # Previously submitted French prompts used this exact prose format.
-        self.assertEqual(
-            parse_avoid_list("en particulier ces mots: chose, truc."), "chose, truc"
-        )
-
+        self.assertEqual(parse_avoid_list(avoid_list_marker("art, café, e.g., item")), "art, café, e.g., item")
+        self.assertEqual(parse_guidance(guidance_marker("old sense", "old advice")), ("old sense", "old advice"))
+        self.assertEqual(parse_avoid_list("en particulier ces mots: chose, truc."), "chose, truc")
         with self.assertRaisesRegex(ValueError, "Invalid avoid-list metadata"):
             parse_avoid_list("<<verbiage_avoid_b64:***>>")
 
@@ -889,7 +887,7 @@ class ProcessBatchTest(unittest.TestCase):
 
         def fake_chat(prompt_text, **kwargs):
             self.assertIn("<<verbiage_cluster_members:GRAPE>>", prompt_text)
-            self.assertIn("hint, clue", prompt_text)
+            self.assertEqual(parse_avoid_list(prompt_text), "hint, clue")
             self.assertIn("an edible fruit from a tree", prompt_text)
             self.assertIn("Avoid naming common varieties.", prompt_text)
             kwargs["usage_log"].append(follow_record)

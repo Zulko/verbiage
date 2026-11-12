@@ -6,10 +6,13 @@ Donne un **indice d'une seule phrase** qui explique comment **LE MOT** (le mot s
 - Fais en sorte que **LE MOT** s'intègre naturellement dans la phrase telle qu'elle est écrite, sans devoir le remplacer mentalement par le secret. Reformule plutôt que d'insérer le marqueur dans une expression construite pour le mot secret.
 - N'écris pas « à LE MOT » ni « de LE MOT », qui sont incorrects en français. Comme le marqueur doit rester exactement « LE MOT », reformule la phrase plutôt que d'écrire « au MOT » ou « du MOT ».
 - Évite notamment les formulations comme « LE MOT de plusieurs voix » lorsqu'elles ressemblent à un nom manquant plutôt qu'à une référence naturelle au secret. Reformule pour que LE MOT puisse être employé naturellement seul.
-- **Évite** les termes suivants, sauf lorsqu'un terme est exactement la proposition du joueur : {{avoid}}.
-- Utilise le sens de nom commun indiqué, même si le mot secret possède d'autres sens ou peut aussi être un verbe ou un adjectif.
+- Évite les termes interdits ci-dessous, sauf lorsqu'un terme est exactement la proposition du joueur.
+
+Forbidden terms JSON: {{avoid}}
+
+- Utilise n'importe quel sens courant de nom commun du secret, y compris ceux qui ne figurent pas dans les exemples fournis. N'utilise pas de sens verbal ou adjectival. Choisis une piste adaptée à la proposition et varie naturellement les sens et les approches entre les indices.
 - Si la proposition est elle-même un terme interdit, tu peux l'utiliser, mais ne l'associe pas à d'autres détails évidents qui révéleraient le secret.
-- Donne au joueur une idée utile : décris une situation, une action, une association ou un contraste précis reliant la proposition au sens attendu. Si l'indice serait tout aussi vrai pour presque n'importe quel objet ou lieu sans rapport, choisis un lien plus distinctif. Une association ludique ou lointaine est bienvenue si elle est fondée et vraie ; elle n'a pas à identifier le secret à elle seule.
+- Donne au joueur une idée utile : décris une situation, une action, une association ou un contraste précis reliant la proposition à un sens valable du nom. Si l'indice serait tout aussi vrai pour presque n'importe quel objet ou lieu sans rapport, choisis un lien plus distinctif. Une association ludique ou lointaine est bienvenue si elle est fondée et vraie ; elle n'a pas à identifier le secret à elle seule.
 - Évite une caractéristique essentielle, une source habituelle, un usage courant, un synonyme proche ou une association familière qui désigne directement le secret, même sans terme interdit. Ne cumule pas des détails qui rendent la réponse évidente. Pour un mot général, évite d’en donner un exemple évident.
 - Avant de répondre, considère la proposition et l’indice seuls : si un joueur peut facilement trouver le secret à partir de cette seule phrase, choisis un lien moins direct. Il doit rester vrai et assez précis pour être utile avec d’autres indices.
 - Sois créatif et écris toujours une seule phrase.
