@@ -2,9 +2,9 @@ name: Create New Puzzles and Commit Changes
 
 on:
   schedule:
-    # 01:00 UTC every day (02:00 in Paris during standard time).
+    # 23:00 UTC every day (midnight in Paris during standard time).
     # Finish a batch queued for today, then submit tomorrow's batch.
-    - cron: "0 1 * * *"
+    - cron: "0 23 * * *"
   workflow_dispatch:
 
 permissions:
@@ -34,8 +34,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set +e
-          TODAY=$(date -u +%F)
-          TOMORROW=$(date -u -d tomorrow +%F)
+          TODAY=$(TZ=Europe/Paris date +%F)
+          TOMORROW=$(TZ=Europe/Paris date -d tomorrow +%F)
           python scripts/game.py process-finished-batch --language en --date "$TODAY"
           process_status=$?
           python scripts/game.py launch-daily-batch --language en --date "$TOMORROW"
@@ -51,8 +51,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set +e
-          TODAY=$(date -u +%F)
-          TOMORROW=$(date -u -d tomorrow +%F)
+          TODAY=$(TZ=Europe/Paris date +%F)
+          TOMORROW=$(TZ=Europe/Paris date -d tomorrow +%F)
           python scripts/game.py process-finished-batch --language fr --date "$TODAY"
           process_status=$?
           python scripts/game.py launch-daily-batch --language fr --date "$TOMORROW"
