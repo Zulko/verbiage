@@ -11,7 +11,6 @@ on:
 
 # Sets the GITHUB_TOKEN permissions to allow deployment to GitHub Pages
 permissions:
-  actions: read
   contents: read
   pages: write
   id-token: write
@@ -26,7 +25,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deploy_first.outputs.page_url || steps.deploy_second.outputs.page_url || steps.deploy_final.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -53,26 +52,29 @@ jobs:
           name: github-pages-${{ github.run_attempt }}
           # Upload dist folder from the verbiage directory
           path: "./verbiage/dist"
-      - name: Wait for artifact metadata
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ARTIFACT_NAME: github-pages-${{ github.run_attempt }}
-        run: |
-          for attempt in {1..12}; do
-            count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" --paginate \
-              --jq '[.artifacts[] | select(.name == env.ARTIFACT_NAME and .expired == false)] | length' | awk '{sum += $1} END {print sum+0}')
-            if [ "$count" -eq 1 ]; then
-              echo "Artifact is available."
-              break
-            fi
-            if [ "$attempt" -eq 12 ]; then
-              echo "Expected one artifact named $ARTIFACT_NAME, found $count."
-              exit 1
-            fi
-            sleep 5
-          done
+      # GitHub's internal artifact lookup can lag behind a successful upload.
       - name: Deploy to GitHub Pages
-        id: deployment
+        id: deploy_first
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
+      - name: Wait before retrying deployment
+        if: steps.deploy_first.outcome == 'failure'
+        run: sleep 30
+      - name: Retry deployment
+        if: steps.deploy_first.outcome == 'failure'
+        id: deploy_second
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
+      - name: Wait before final deployment attempt
+        if: steps.deploy_second.outcome == 'failure'
+        run: sleep 60
+      - name: Final deployment attempt
+        if: steps.deploy_second.outcome == 'failure'
+        id: deploy_final
         uses: actions/deploy-pages@v5
         with:
           artifact_name: github-pages-${{ github.run_attempt }}
